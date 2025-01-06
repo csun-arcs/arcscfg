@@ -1,1 +1,4 @@
 # arcscfg/requirements.txt
+
+pyyaml
+pytest
