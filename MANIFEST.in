@@ -1,0 +1,4 @@
+# arcscfg/MANIFEST.in
+
+include arcscfg/config/workspaces/*.yaml
+include arcscfg/config/dotfiles/./
