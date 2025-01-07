@@ -1,0 +1,12 @@
+# arcscfg/arcscfg/config/workspaces/project1.yaml
+#
+# Temporary CoHORT workspace config test file
+repositories:
+  test-package-1:
+    type: git
+    url: git@gitlab.com:csun-arcs/cohort/test-package-1.git
+    version: main
+  test-package-2:
+    type: git
+    url: git@gitlab.com:csun-arcs/cohort/test-package-2.git
+    version: main
