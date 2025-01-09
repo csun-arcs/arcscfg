@@ -9,11 +9,8 @@ def create_workspace(workspace):
 
 def clone_repos(workspace, workspace_config):
     """Clone repos defined in a workspace config file to a ROS 2 workspace."""
-
-def build_workspace(workspace_path):
-    """Build a ROS 2 workspace."""
-    subprocess.run(["colcon", "build"], cwd=workspace_path, check=True)
-    subprocess.run(["vcs", "import", "--input", str(workspace_config), "src"], cwd=workspace, check=True)
+    subprocess.run(["vcs", "import", "--input", str(workspace_config), "src"],
+                   cwd=workspace, check=True)
 
 def find_ros2_underlays():
     """Search for ROS 2 installations and workspaces."""
@@ -46,7 +43,8 @@ def setup_workspace(workspace, workspace_config):
         # Ensure the workspace_config path is absolute
         workspace_config = Path(workspace_config).resolve()
         if not workspace_config.exists():
-            print(f"Error: Workspace configuration file not found: {workspace_config}")
+            print(f"Error: Workspace configuration file not found: "
+                  f"{workspace_config}")
             sys.exit(1)
 
         # Find and prompt for underlays
@@ -64,10 +62,6 @@ def setup_workspace(workspace, workspace_config):
         create_workspace(workspace)
 
         # Proceed with cloning repositories
-        clone_repos(workspace_config, workspace_path)
-
-        # Build the workspace
-        build_workspace(workspace_path)
         clone_repos(workspace, workspace_config)
 
     except Exception as e:
