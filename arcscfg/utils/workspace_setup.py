@@ -1,21 +1,19 @@
-# arcscfg/arcscfg/utils/setup_workspace.py
-
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-def create_workspace(workspace_path):
+def create_workspace(workspace):
     """Create a ROS 2 workspace."""
-    Path(os.path.join(workspace_path, "src")).mkdir(parents=True, exist_ok=True)
+    Path(os.path.join(workspace, "src")).mkdir(parents=True, exist_ok=True)
 
-def clone_repos(workspace_config, workspace_path):
+def clone_repos(workspace, workspace_config):
     """Clone repos defined in a workspace config file to a ROS 2 workspace."""
-    subprocess.run(["vcs", "import", "--input", str(workspace_config), "src"], cwd=workspace_path, check=True)
 
 def build_workspace(workspace_path):
     """Build a ROS 2 workspace."""
     subprocess.run(["colcon", "build"], cwd=workspace_path, check=True)
+    subprocess.run(["vcs", "import", "--input", str(workspace_config), "src"], cwd=workspace, check=True)
 
 def find_ros2_underlays():
     """Search for ROS 2 installations and workspaces."""
@@ -35,14 +33,14 @@ def prompt_for_underlay(underlays):
     """Prompt the user to select an underlay."""
     print("Available underlays:")
     for i, underlay in enumerate(underlays):
-        print(f"{i + 1}: {underlay}")
+        print(f"{i}: {underlay}")
 
-    choice = input("Select an underlay (or press Enter to skip): ")
+    choice = input("Select an underlay (default: 0): ")
     if choice:
-        return underlays[int(choice) - 1]
-    return None
+        return underlays[int(choice)]
+    return underlays[0]
 
-def setup_workspace(workspace_config):
+def setup_workspace(workspace, workspace_config):
     """Set up a ROS 2 workspace."""
     try:
         # Ensure the workspace_config path is absolute
@@ -50,11 +48,6 @@ def setup_workspace(workspace_config):
         if not workspace_config.exists():
             print(f"Error: Workspace configuration file not found: {workspace_config}")
             sys.exit(1)
-
-        # Derive workspace name from the YAML file name
-        workspace_name = Path(workspace_config).stem + "_ws"
-        workspace_name = input(f"Enter workspace name (default: {workspace_name}): ") or workspace_name
-        workspace_path = Path.home() / workspace_name
 
         # Find and prompt for underlays
         underlays = find_ros2_underlays()
@@ -68,13 +61,14 @@ def setup_workspace(workspace_config):
             print("No underlay selected.")
 
         # Create and initialize the workspace
-        create_workspace(workspace_path)
+        create_workspace(workspace)
 
         # Proceed with cloning repositories
         clone_repos(workspace_config, workspace_path)
 
         # Build the workspace
         build_workspace(workspace_path)
+        clone_repos(workspace, workspace_config)
 
     except Exception as e:
         print(f"Error: {e}")
