@@ -72,11 +72,11 @@ def main():
 
         workspace = str(Path(workspace).expanduser())
 
-        print(f"Setting up workspace at '{workspace}' "
-              f"using config '{workspace_config}'")
         setup_workspace(workspace, workspace_config)
+
     elif args.command == "install":
         print("Installing dependencies")
+
     elif args.command == "build":
         workspace = None
         if not args.workspace:
