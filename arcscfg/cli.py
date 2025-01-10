@@ -51,7 +51,7 @@ def main():
                     try:
                         workspace_config = Path(os.path.join(
                             Path(__file__).parent, "config/workspaces",
-                            args.workspace_config, ".yaml"))
+                            args.workspace_config + ".yaml"))
                         assert(workspace_config.is_file())
                     except Exception:
                         workspace_config = None
