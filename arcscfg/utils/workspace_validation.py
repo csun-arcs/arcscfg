@@ -31,3 +31,22 @@ def validate_ros_environment():
     if "ROS_DISTRO" not in os.environ:
         raise EnvironmentError("ROS 2 environment not sourced")
     return os.environ["ROS_DISTRO"]
+
+def verify_ros_setup():
+    """Verify that ROS 2 environment variables are set correctly."""
+    required_vars = [
+        'ROS_DISTRO',
+        'ROS_VERSION',
+        'AMENT_PREFIX_PATH',
+        'CMAKE_PREFIX_PATH',
+        'COLCON_PREFIX_PATH'
+    ]
+
+    missing_vars = [var for var in required_vars if var not in os.environ]
+
+    if missing_vars:
+        print("Warning: Some ROS 2 environment variables are missing:")
+        for var in missing_vars:
+            print(f"  - {var}")
+        return False
+    return True
