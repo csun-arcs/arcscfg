@@ -1,6 +1,11 @@
 import os
 import subprocess
+import logging
+
 from pathlib import Path
+from typing import List, Optional
+
+logger = logging.getLogger("arcscfg")
 
 def get_shell_setup_file(underlay_path):
     """Determine appropriate setup file based on user's shell."""
@@ -66,3 +71,65 @@ def source_setup_file(setup_file):
     except subprocess.CalledProcessError as e:
         print(f"Error sourcing setup file: {e}")
         return False
+
+def run_command(command: List[str], cwd: Optional[str] = None, capture_output: bool = True, verbose: bool = False) -> subprocess.CompletedProcess:
+    """
+    Execute a system command, log its output, and handle errors.
+
+    Args:
+        command (List[str]): The command and its arguments to execute.
+        cwd (Optional[str]): The working directory in which to execute the command.
+        capture_output (bool): Whether to capture the command's output.
+        verbose (bool): Whether to log the command's output in real-time.
+
+    Returns:
+        subprocess.CompletedProcess: The result of the executed command.
+    """
+    logger.debug(f"Executing command: {' '.join(command)} in '{cwd}'")
+    try:
+        if verbose:
+            process = subprocess.Popen(
+                command,
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
+            )
+
+            # Stream output to logger
+            for stdout_line in iter(process.stdout.readline, ""):
+                logger.info(stdout_line.strip())
+            for stderr_line in iter(process.stderr.readline, ""):
+                logger.error(stderr_line.strip())
+
+            process.stdout.close()
+            process.stderr.close()
+            return_code = process.wait()
+
+            if return_code != 0:
+                logger.error(f"Command {' '.join(command)} exited with {return_code}")
+            return subprocess.CompletedProcess(command, return_code)
+
+        else:
+            result = subprocess.run(
+                command,
+                cwd=cwd,
+                capture_output=capture_output,
+                text=True,
+                check=True
+            )
+            logger.debug(f"Command output: {result.stdout}")
+            if result.stderr:
+                logger.warning(f"Command stderr: {result.stderr}")
+            return result
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Command '{' '.join(e.cmd)}' failed with exit code {e.returncode}")
+        if e.stdout:
+            logger.error(f"stdout: {e.stdout}")
+        if e.stderr:
+            logger.error(f"stderr: {e.stderr}")
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected error while running command: {' '.join(command)}")
+        raise

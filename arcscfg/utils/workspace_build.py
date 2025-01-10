@@ -9,7 +9,8 @@ from .workspace_validation import (
 )
 from .shell import (
     get_shell_setup_file,
-    source_setup_file
+    source_setup_file,
+    run_command
 )
 
 # Initialize logger
@@ -83,7 +84,7 @@ def build_workspace(workspace_path):
 
         # Proceed with build
         logger.info("Starting workspace build using colcon...")
-        subprocess.run(["colcon", "build"], cwd=workspace_path, check=True)
+        run_command(["colcon", "build"], cwd=workspace_path, verbose=True)
         logger.info("Workspace build completed successfully.")
 
     except subprocess.CalledProcessError as e:

@@ -2,6 +2,8 @@ import os
 import subprocess
 import sys
 import yaml
+import logging
+
 from pathlib import Path
 
 from .workspace_validation import (
@@ -9,11 +11,8 @@ from .workspace_validation import (
     validate_workspace_config,
     validate_src_directory,
 )
-from .shell import (
-    get_shell_setup_file,
-    source_setup_file
-)
-import logging
+
+from .shell import run_command
 
 # Initialize logger
 logger = logging.getLogger("arcscfg")
@@ -22,11 +21,11 @@ def clone_repos(workspace, workspace_config):
     """Clone repos defined in a workspace config file to a ROS 2 workspace."""
     try:
         logger.info("Cloning repositories...")
-        subprocess.run(["vcs", "import", "--input", str(workspace_config), "src"],
-                       cwd=workspace, check=True)
+        run_command(["vcs", "import", "--input", str(workspace_config), "src"],
+                    cwd=workspace, verbose=True)
         logger.info("Repositories cloned successfully.")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to clone repositories: {e}")
+    except subprocess.CalledProcessError:
+        logger.error("Failed to clone repositories.")
         sys.exit(1)
 
 def setup_workspace(workspace, workspace_config):

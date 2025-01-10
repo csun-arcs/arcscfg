@@ -1,6 +1,10 @@
 import os
 import yaml
+import logging
 from pathlib import Path
+
+# Initialize logger
+logger = logging.getLogger("arcscfg")
 
 def validate_workspace_path(workspace_path):
     """Validate that the workspace path is writable."""
@@ -45,8 +49,8 @@ def verify_ros_setup():
     missing_vars = [var for var in required_vars if var not in os.environ]
 
     if missing_vars:
-        print("Warning: Some ROS 2 environment variables are missing:")
+        logger.warning("Warning: Some ROS 2 environment variables are missing:")
         for var in missing_vars:
-            print(f"  - {var}")
+            logger.warning(f"  - {var}")
         return False
     return True

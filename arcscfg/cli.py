@@ -110,9 +110,8 @@ def main():
 
         workspace = str(Path(workspace).expanduser())
 
-        logger.info(f"Setting up workspace at '{workspace}' "
-                    f"using config '{workspace_config}'")
         setup_workspace(workspace, workspace_config)
+
         logger.info("Workspace setup completed successfully.")
 
     elif args.command == "install":
