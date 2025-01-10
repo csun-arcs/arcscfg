@@ -9,32 +9,49 @@ from .workspace_validation import (
     validate_workspace_config,
     validate_src_directory,
 )
+from .shell import (
+    get_shell_setup_file,
+    source_setup_file
+)
+import logging
+
+# Initialize logger
+logger = logging.getLogger("arcscfg")
 
 def clone_repos(workspace, workspace_config):
     """Clone repos defined in a workspace config file to a ROS 2 workspace."""
-    subprocess.run(["vcs", "import", "--input", str(workspace_config), "src"],
-                   cwd=workspace, check=True)
+    try:
+        logger.info("Cloning repositories...")
+        subprocess.run(["vcs", "import", "--input", str(workspace_config), "src"],
+                       cwd=workspace, check=True)
+        logger.info("Repositories cloned successfully.")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to clone repositories: {e}")
+        sys.exit(1)
 
 def setup_workspace(workspace, workspace_config):
     """Set up a ROS 2 workspace."""
     try:
-        # Validate workspace path and config
+        # Validate workspace path
         workspace = validate_workspace_path(workspace)
+        logger.debug(f"Validated workspace path: {workspace}")
 
         # Load and validate workspace configuration
         with open(workspace_config, "r") as f:
             config = yaml.safe_load(f)
         validate_workspace_config(config)
+        logger.debug(f"Validated workspace configuration: {workspace_config}")
 
         # Validate/create src directory
         validate_src_directory(workspace)
+        logger.debug(f"Validated 'src' directory in workspace: {workspace}")
 
-        print(f"Setting up workspace at '{workspace}' "
-              f"using config '{workspace_config}'")
+        logger.info(f"Setting up workspace at '{workspace}' "
+                    f"using config '{workspace_config}'")
 
         # Clone repositories
         clone_repos(workspace, workspace_config)
 
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
         sys.exit(1)
