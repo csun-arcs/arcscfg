@@ -1,7 +1,15 @@
 import os
 import subprocess
 import sys
+import yaml
 from pathlib import Path
+
+from .workspace_validation import (
+    validate_workspace_path,
+    validate_workspace_config,
+    validate_src_directory,
+    validate_ros_environment
+)
 
 def create_workspace(workspace):
     """Create a ROS 2 workspace."""
@@ -40,12 +48,26 @@ def prompt_for_underlay(underlays):
 def setup_workspace(workspace, workspace_config):
     """Set up a ROS 2 workspace."""
     try:
+        # Validate ROS environment
+        ros_distro = validate_ros_environment()
+
         # Ensure the workspace_config path is absolute
         workspace_config = Path(workspace_config).resolve()
         if not workspace_config.exists():
-            print(f"Error: Workspace configuration file not found: "
-                  f"{workspace_config}")
+            print(f"Error: Workspace configuration file not found: {workspace_config}")
             sys.exit(1)
+
+        # Validate workspace path
+        workspace = validate_workspace_path(workspace)
+        print(f"Setting up workspace at '{workspace}' using config '{workspace_config}'")
+
+        # Load and validate workspace configuration
+        with open(workspace_config, "r") as f:
+            config = yaml.safe_load(f)
+        validate_workspace_config(config)
+
+        # Validate/create src directory
+        validate_src_directory(workspace)
 
         # Find and prompt for underlays
         underlays = find_ros2_underlays()
@@ -55,11 +77,6 @@ def setup_workspace(workspace, workspace_config):
         if underlay:
             print(f"Using underlay: {underlay}")
             # Add logic to source the underlay's setup.bash
-        else:
-            print("No underlay selected.")
-
-        # Create and initialize the workspace
-        create_workspace(workspace)
 
         # Proceed with cloning repositories
         clone_repos(workspace, workspace_config)
