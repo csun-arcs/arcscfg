@@ -5,8 +5,7 @@ from arcscfg.utils.workspace_setup import setup_workspace
 from arcscfg.utils.workspace_build import build_workspace
 
 def get_workspace_configs(full_paths=False):
-    workspaces_dir = Path(os.path.join(Path(__file__).parent,
-                                       "config/workspaces"))
+    workspaces_dir = Path(__file__).parent / "config/workspaces"
     if full_paths:
         return [f for f in workspaces_dir.glob("*.yaml")]
     else:
@@ -39,20 +38,26 @@ def main():
         workspace_config = None
         if args.workspace_config:
             try:
-                workspace_config = Path(args.workspace_config)
-                assert(workspace_config.is_file())
+                # Attempt absolute path
+                workspace_config = Path(args.workspace_config).resolve()
+                if not workspace_config.is_file():
+                    raise ValueError
             except Exception:
                 try:
-                    workspace_config = Path(os.path.join(
-                        Path(__file__).parent,
-                        "config/workspaces", args.workspace_config))
-                    assert(workspace_config.is_file())
+                    # Attempt relative to config/workspaces
+                    workspace_config = (Path(__file__).parent.parent /
+                                        "config/workspaces" /
+                                        args.workspace_config)
+                    if not workspace_config.is_file():
+                        raise ValueError
                 except Exception:
                     try:
-                        workspace_config = Path(os.path.join(
-                            Path(__file__).parent, "config/workspaces",
-                            args.workspace_config + ".yaml"))
-                        assert(workspace_config.is_file())
+                        # Attempt adding .yaml extension
+                        workspace_config = (Path(__file__).parent.parent /
+                                            "config/workspaces" /
+                                            f"{args.workspace_config}.yaml")
+                        if not workspace_config.is_file():
+                            raise ValueError
                     except Exception:
                         workspace_config = None
                         print("Unable to resolve workspace config argument!")
@@ -63,10 +68,11 @@ def main():
         if not args.workspace:
             # Derive workspace name from the YAML file name
             workspace_name = Path(workspace_config).stem + "_ws"
-            workspace = str(os.path.join(Path.home(), workspace_name))
+            default_workspace = Path.home() / workspace_name
             workspace = (
-                input(f"Enter workspace path (default: {workspace}): ") or
-                workspace)
+                input(
+                    f"Enter workspace path (default: {default_workspace}): ") or
+                str(default_workspace))
         else:
             workspace = args.workspace
 
