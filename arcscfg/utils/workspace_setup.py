@@ -3,7 +3,6 @@ import subprocess
 import sys
 import yaml
 import logging
-
 from pathlib import Path
 
 from .workspace_validation import (
@@ -11,27 +10,37 @@ from .workspace_validation import (
     validate_workspace_config,
     validate_src_directory,
 )
-
 from .shell import run_command
 
 # Initialize logger
 logger = logging.getLogger("arcscfg")
 
-def clone_repos(workspace, workspace_config):
-    """Clone repos defined in a workspace config file to a ROS 2 workspace."""
+def clone_repos(workspace: Path, workspace_config: Path):
+    """Clone repos defined in the workspace config file to the ROS 2 workspace.
+
+    Args:
+        workspace (Path): The workspace directory.
+        workspace_config (Path): The workspace configuration YAML file.
+    """
     try:
         logger.info("Cloning repositories...")
         run_command(["vcs", "import", "--input", str(workspace_config), "src"],
-                    cwd=workspace, verbose=True)
+                    cwd=str(workspace), verbose=True)
         logger.info("Repositories cloned successfully.")
     except subprocess.CalledProcessError:
         logger.error("Failed to clone repositories.")
         sys.exit(1)
 
-def setup_workspace(workspace, workspace_config):
-    """Set up a ROS 2 workspace."""
+def setup_workspace(workspace_path: str, workspace_config: str):
+    """Set up a ROS 2 workspace by cloning repositories.
+
+    Args:
+        workspace_path (str): Path to the ROS 2 workspace.
+        workspace_config (str): Path to the workspace configuration YAML file.
+    """
     try:
-        # Validate workspace path
+        # Expand and validate workspace path
+        workspace = Path(workspace_path).expanduser().resolve()
         workspace = validate_workspace_path(workspace)
         logger.debug(f"Validated workspace path: {workspace}")
 
@@ -49,7 +58,7 @@ def setup_workspace(workspace, workspace_config):
                     f"using config '{workspace_config}'")
 
         # Clone repositories
-        clone_repos(workspace, workspace_config)
+        clone_repos(workspace, Path(workspace_config))
 
     except Exception as e:
         logger.error(f"Error: {e}")

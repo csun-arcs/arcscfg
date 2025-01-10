@@ -1,14 +1,20 @@
 import os
 import subprocess
 import logging
-
 from pathlib import Path
 from typing import List, Optional
 
 logger = logging.getLogger("arcscfg")
 
-def get_shell_setup_file(underlay_path):
-    """Determine appropriate setup file based on user's shell."""
+def get_shell_setup_file(underlay_path: Path) -> Optional[Path]:
+    """Determine appropriate setup file based on user's shell.
+
+    Args:
+        underlay_path (Path): The path to the underlay.
+
+    Returns:
+        Optional[Path]: Path to the setup file if found, else None.
+    """
     # Get user's current shell
     shell = os.environ.get('SHELL', '').lower()
 
@@ -21,25 +27,38 @@ def get_shell_setup_file(underlay_path):
 
     # Get the appropriate setup file name
     shell_name = Path(shell).name
+    # Default to bash if unknown
     setup_file = setup_files.get(shell_name, 'setup.bash')
 
     # Possible setup file locations
     possible_paths = [
-        Path(underlay_path) / setup_file,  # For system installs like /opt/ros/jazzy
-        Path(underlay_path) / 'install' / setup_file,  # For colcon workspaces
-        Path(underlay_path) / 'devel' / setup_file,  # For catkin workspaces
+        # For system installs like /opt/ros/jazzy/setup.bash
+        underlay_path / setup_file,
+        # For colcon workspaces
+        underlay_path / 'install' / setup_file,
+        # For catkin workspaces
+        underlay_path / 'devel' / setup_file
     ]
 
     # Try each possible path
     for path in possible_paths:
         if path.exists():
+            logger.debug(f"Found setup file: {path}")
             return path
 
-    # If no setup file found, return the default path
-    return possible_paths[0]
+    logger.warning(f"No setup file found for shell '{shell_name}' "
+                   f"in underlay '{underlay_path}'.")
+    return None
 
-def source_setup_file(setup_file):
-    """Source the appropriate setup file and update environment."""
+def source_setup_file(setup_file: Path) -> bool:
+    """Source the appropriate setup file and update environment.
+
+    Args:
+        setup_file (Path): Path to the setup file.
+
+    Returns:
+        bool: True if sourcing was successful, False otherwise.
+    """
     try:
         # Get the current shell
         shell = os.environ.get('SHELL', '/bin/bash')
@@ -51,34 +70,38 @@ def source_setup_file(setup_file):
         proc = subprocess.Popen(
             [shell, '-c', source_cmd],
             stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             universal_newlines=True
         )
 
-        # Parse the environment variables
-        for line in proc.stdout:
-            if '=' not in line:
-                continue
-            key, value = line.rstrip().split('=', 1)
-            os.environ[key] = value
-
-        proc.communicate()
+        stdout, stderr = proc.communicate()
 
         if proc.returncode != 0:
-            raise subprocess.CalledProcessError(proc.returncode, source_cmd)
+            logger.error(f"Error sourcing setup file: {stderr.strip()}")
+            return False
 
+        # Parse the environment variables
+        for line in stdout.splitlines():
+            if '=' not in line:
+                continue
+            key, value = line.strip().split('=', 1)
+            os.environ[key] = value
+
+        logger.debug(f"Successfully sourced setup file: {setup_file}")
         return True
 
     except subprocess.CalledProcessError as e:
-        print(f"Error sourcing setup file: {e}")
+        logger.error(f"Error sourcing setup file: {e.stderr.strip()}")
         return False
 
-def run_command(command: List[str], cwd: Optional[str] = None, capture_output: bool = True, verbose: bool = False) -> subprocess.CompletedProcess:
+def run_command(command: List[str], cwd: Optional[str] = None, capture_output: bool = True,
+              verbose: bool = False) -> subprocess.CompletedProcess:
     """
     Execute a system command, log its output, and handle errors.
 
     Args:
         command (List[str]): The command and its arguments to execute.
-        cwd (Optional[str]): The working directory in which to execute the command.
+        cwd (Optional[str]): The working dir in which to execute the command.
         capture_output (bool): Whether to capture the command's output.
         verbose (bool): Whether to log the command's output in real-time.
 
@@ -107,7 +130,8 @@ def run_command(command: List[str], cwd: Optional[str] = None, capture_output: b
             return_code = process.wait()
 
             if return_code != 0:
-                logger.error(f"Command {' '.join(command)} exited with {return_code}")
+                logger.error(f"Command {' '.join(command)} exited "
+                             f"with {return_code}")
             return subprocess.CompletedProcess(command, return_code)
 
         else:
@@ -124,12 +148,14 @@ def run_command(command: List[str], cwd: Optional[str] = None, capture_output: b
             return result
 
     except subprocess.CalledProcessError as e:
-        logger.error(f"Command '{' '.join(e.cmd)}' failed with exit code {e.returncode}")
+        logger.error(f"Command '{' '.join(e.cmd)}' failed "
+                     f"with exit code {e.returncode}")
         if e.stdout:
             logger.error(f"stdout: {e.stdout}")
         if e.stderr:
             logger.error(f"stderr: {e.stderr}")
         raise
     except Exception as e:
-        logger.exception(f"Unexpected error while running command: {' '.join(command)}")
+        logger.exception(
+            f"Unexpected error while running command: {' '.join(command)}")
         raise
