@@ -9,6 +9,7 @@ setup(
     include_package_data=True,
     install_requires=[
         "pyyaml", # For YAML parsing
+        "colorlog",  # For colored logging
     ],
     entry_points={
         "console_scripts": [
