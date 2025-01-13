@@ -82,115 +82,188 @@ def infer_default_workspace_path(workspace_config: Path) -> str:
     default_workspace = Path.home() / suggested_name
     return str(default_workspace)
 
-def prompt_for_workspace(default_workspace: Path = None,
-                       allow_create: bool = True) -> Path:
+def prompt_for_workspace(
+    default_workspace: Path = None,
+    allow_available: bool = True,
+    allow_create: bool = True
+) -> Path:
     """
-    Prompt the user to select an existing workspace or specify an existing
-    workspace path.
+    Prompt the user to select an existing workspace or specify a workspace path.
 
     Args:
         default_workspace (Path, optional): The default workspace path to
     suggest. Defaults to None.
+        allow_available (bool, optional): Whether to allow selecting from
+    available workspaces. Defaults to True.
         allow_create (bool, optional): Whether to allow creating/selecting a
     new workspace. Defaults to True.
 
     Returns:
         Path: The selected or entered workspace path.
     """
-    workspaces = find_available_workspaces()
-    print("\nAvailable ROS 2 workspaces in your home directory:")
-    for i, workspace in enumerate(workspaces, start=1):
-        print(f"{i}: {workspace}")
+    if allow_available:
+        workspaces = find_available_workspaces()
+        print("\nAvailable ROS 2 workspaces in your home directory:")
+        for i, workspace in enumerate(workspaces, start=1):
+            print(f"{i}: {workspace}")
 
-    if allow_create:
-        print(f"{len(workspaces)+1}: Create a new workspace")
-        create_option = len(workspaces) + 1
-    else:
-        print(f"{len(workspaces)+1}: Enter an existing workspace path")
-        create_option = len(workspaces) + 1
-
-    while True:
-        try:
-            if allow_create:
-                default_option = (
-                    1 if default_workspace and default_workspace in workspaces
-                    else create_option)
-                prompt_msg = f"Select a workspace (default: {default_option}): "
-            else:
-                default_option = create_option
-                prompt_msg = f"Select a workspace (default: {default_option}): "
-
-            choice = input(prompt_msg).strip()
-        except EOFError:
-            choice = str(default_option)
-
-        if not choice:
-            choice_num = default_option
+        if allow_create:
+            print(f"{len(workspaces)+1}: Create a new workspace")
+            create_option = len(workspaces) + 1
         else:
+            print(f"{len(workspaces)+1}: Enter an existing workspace path")
+            create_option = len(workspaces) + 1
+
+        while True:
             try:
-                choice_num = int(choice)
-            except ValueError:
-                print("Invalid input. Please enter a number corresponding to "
-                      "the options.")
-                continue
+                if allow_create:
+                    if default_workspace and default_workspace in workspaces:
+                        default_option = workspaces.index(default_workspace) + 1
+                        prompt_msg = (f"Select a workspace (default: "
+                                      f"{default_option}): ")
+                    else:
+                        default_option = create_option
+                        prompt_msg = (f"Select a workspace (default: "
+                                      f"{default_option}): ")
+                else:
+                    default_option = create_option
+                    prompt_msg = (f"Select a workspace (default: "
+                                  f"{default_option}): ")
 
-        if 1 <= choice_num <= len(workspaces):
-            selected_workspace = workspaces[choice_num - 1]
-            logger.debug(f"User selected existing workspace: "
-                         f"{selected_workspace}")
-            return selected_workspace
-        elif allow_create and choice_num == create_option:
-            # Allow user to create/select a new workspace
-            workspace_input = input(
-                "Enter the full path for the new workspace: ").strip()
-            workspace = Path(workspace_input).expanduser().resolve()
-            if not workspace.exists():
-                # Attempt to create the workspace
-                try:
-                    validate_workspace_path(workspace)
-                    validate_src_directory(workspace)
-                    workspace.mkdir(parents=True, exist_ok=True)
-                    logger.debug(f"Created new workspace: {workspace}")
-                except Exception as e:
-                    logger.error(f"Invalid workspace path: {e}")
-                    print(f"Invalid workspace: {e}")
-                    continue
+                choice = input(prompt_msg).strip()
+            except EOFError:
+                choice = str(default_option)
+
+            if not choice:
+                choice_num = default_option
             else:
-                # Workspace exists; confirm it's a valid workspace
                 try:
-                    validate_workspace_path(workspace)
-                    validate_src_directory(workspace)
-                    logger.debug(f"Selected existing workspace: {workspace}")
-                except Exception as e:
-                    logger.error(f"Invalid workspace: {e}")
-                    print(f"Invalid workspace: {e}")
+                    choice_num = int(choice)
+                except ValueError:
+                    print("Invalid input. Please enter a number corresponding "
+                          "to the options.")
                     continue
-            return workspace
-        elif not allow_create and choice_num == create_option:
-            # Allow user to enter an existing workspace path
-            workspace_input = input(
-                "Enter the full path to the existing workspace: ").strip()
-            workspace = Path(workspace_input).expanduser().resolve()
-            if not workspace.is_dir():
-                logger.error(f"Provided workspace path does not exist or "
-                             f"is not a directory: {workspace}")
-                print("Please enter a valid existing workspace directory.")
-                continue
-            if workspace not in workspaces:
-                # Validate workspace structure
-                try:
-                    validate_workspace_path(workspace)
-                    validate_src_directory(workspace)
-                    logger.debug(
-                        f"User entered valid existing workspace: {workspace}")
-                except Exception as e:
-                    logger.error(f"Invalid workspace path: {e}")
-                    print(f"Invalid workspace: {e}")
-                    continue
-            logger.debug(f"User entered existing workspace path: {workspace}")
-            return workspace
+
+            if allow_available and 1 <= choice_num <= len(workspaces):
+                selected_workspace = workspaces[choice_num - 1]
+                logger.debug(
+                    f"User selected existing workspace: {selected_workspace}")
+                return selected_workspace
+            elif allow_create and choice_num == create_option:
+                # Allow user to create/select a new workspace
+                workspace_input = input(
+                    f"Enter the full path for the new workspace (default: "
+                    f"{default_workspace}): "
+                ).strip()
+                if not workspace_input:
+                    workspace_input = str(default_workspace)
+                workspace = Path(workspace_input).expanduser().resolve()
+                if not workspace.exists():
+                    # Attempt to create the workspace
+                    try:
+                        validate_workspace_path(workspace)
+                        validate_src_directory(workspace)
+                        workspace.mkdir(parents=True, exist_ok=True)
+                        logger.debug(f"Created new workspace: {workspace}")
+                    except Exception as e:
+                        logger.error(f"Invalid workspace path: {e}")
+                        print(f"Invalid workspace: {e}")
+                        continue
+                else:
+                    # Workspace exists; confirm it's a valid workspace
+                    try:
+                        validate_workspace_path(workspace)
+                        validate_src_directory(workspace)
+                        logger.debug(f"Selected existing workspace: "
+                                     f"{workspace}")
+                    except Exception as e:
+                        logger.error(f"Invalid workspace: {e}")
+                        print(f"Invalid workspace: {e}")
+                        continue
+                return workspace
+            elif not allow_create and 1 <= choice_num <= len(workspaces):
+                selected_workspace = workspaces[choice_num - 1]
+                logger.debug(f"User selected existing workspace: "
+                             f"{selected_workspace}")
+                return selected_workspace
+            elif not allow_available and allow_create and choice_num == 1:
+                # This case is when allow_available=False and
+                # only option is to create
+                workspace_input = input(
+                    f"Enter the full path for the new workspace (default: "
+                    f"{default_workspace}): "
+                ).strip()
+                if not workspace_input:
+                    workspace_input = str(default_workspace)
+                workspace = Path(workspace_input).expanduser().resolve()
+                if not workspace.exists():
+                    # Attempt to create the workspace
+                    try:
+                        validate_workspace_path(workspace)
+                        validate_src_directory(workspace)
+                        workspace.mkdir(parents=True, exist_ok=True)
+                        logger.debug(f"Created new workspace: {workspace}")
+                    except Exception as e:
+                        logger.error(f"Invalid workspace path: {e}")
+                        print(f"Invalid workspace: {e}")
+                        continue
+                else:
+                    # Workspace exists; confirm it's a valid workspace
+                    try:
+                        validate_workspace_path(workspace)
+                        validate_src_directory(workspace)
+                        logger.debug(
+                            f"Selected existing workspace: {workspace}")
+                    except Exception as e:
+                        logger.error(f"Invalid workspace: {e}")
+                        print(f"Invalid workspace: {e}")
+                        continue
+                return workspace
+            else:
+                print("Invalid selection. Please choose a valid number.")
+    else:
+        # Directly prompt for workspace path without listing
+        # available workspaces
+        workspace_input = input(
+            f"Enter the full path for the new workspace "
+            f"(default: {default_workspace}): "
+        ).strip()
+        if not workspace_input:
+            workspace_input = str(default_workspace)
+        workspace = Path(workspace_input).expanduser().resolve()
+        if not workspace.exists():
+            # Attempt to create the workspace
+            try:
+                validate_workspace_path(workspace)
+                validate_src_directory(workspace)
+                workspace.mkdir(parents=True, exist_ok=True)
+                logger.debug(f"Created new workspace: {workspace}")
+            except Exception as e:
+                logger.error(f"Invalid workspace path: {e}")
+                print(f"Invalid workspace: {e}")
+                # Prompt again
+                return prompt_for_workspace(
+                    default_workspace=default_workspace,
+                    allow_available=allow_available,
+                    allow_create=allow_create
+                )
         else:
-            print("Invalid selection. Please choose a valid number.")
+            # Workspace exists; confirm it's a valid workspace
+            try:
+                validate_workspace_path(workspace)
+                validate_src_directory(workspace)
+                logger.debug(f"Selected existing workspace: {workspace}")
+            except Exception as e:
+                logger.error(f"Invalid workspace: {e}")
+                print(f"Invalid workspace: {e}")
+                # Prompt again
+                return prompt_for_workspace(
+                    default_workspace=default_workspace,
+                    allow_available=allow_available,
+                    allow_create=allow_create
+                )
+        return workspace
+
 
 def main():
     global logger
@@ -269,7 +342,10 @@ def main():
             default_workspace_path = infer_default_workspace_path(
                 Path(workspace_config))
             workspace = prompt_for_workspace(
-                default_workspace=default_workspace_path, allow_create=True)
+                default_workspace=default_workspace_path,
+                allow_available=False,
+                allow_create=True
+            )
             logger.debug(f"Selected workspace path: {workspace}")
         else:
             workspace = args.workspace
@@ -288,7 +364,10 @@ def main():
         logger.info("Dependency installation completed successfully.")
 
     elif args.command == "build":
-        workspace = args.workspace or prompt_for_workspace(allow_create=False)
+        workspace = args.workspace or prompt_for_workspace(
+            allow_available=True,
+            allow_create=False
+        )
         if not workspace:
             logger.error("Workspace path not provided for build command.")
             sys.exit(1)
