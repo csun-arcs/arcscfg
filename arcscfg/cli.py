@@ -15,12 +15,9 @@ from arcscfg.utils.workspace_validation import (
 # Initialize logger variable globally
 logger = None
 
-def get_workspace_configs(full_paths=False):
+def get_workspace_configs() -> List[Path]:
     workspaces_dir = Path(__file__).parent / "config/workspaces"
-    if full_paths:
-        return [f.resolve() for f in workspaces_dir.glob("*.yaml") if f.is_file()]
-    else:
-        return [f.name for f in workspaces_dir.glob("*.yaml") if f.is_file()]
+    return [f.resolve() for f in workspaces_dir.glob("*.yaml") if f.is_file()]
 
 def prompt_for_workspace_configs(workspace_configs: List[Path]) -> Path:
     """Prompt the user to select a workspace configuration.
@@ -263,7 +260,7 @@ def main():
                             "Unable to resolve workspace config argument!"
                         )
         if not workspace_config:
-            workspace_configs = get_workspace_configs(full_paths=True)
+            workspace_configs = get_workspace_configs()
             workspace_config = prompt_for_workspace_configs(workspace_configs)
             logger.debug(f"Selected workspace config: {workspace_config}")
 
