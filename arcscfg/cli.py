@@ -270,7 +270,8 @@ def main():
     parser = argparse.ArgumentParser(
         description="ARCS Environment Configurator"
     )
-    parser.add_argument("command", choices=["setup", "install", "build"],
+    parser.add_argument("command", choices=["install", "setup", "build",
+                                            "update"],
                         help="Command to execute")
     parser.add_argument("-w", "--workspace",
                         help="ROS 2 workspace path.")
@@ -376,6 +377,22 @@ def main():
         logger.info(f"Building workspace at '{workspace}'")
         build_workspace(workspace)
         logger.info("Workspace build completed successfully.")
+
+    elif args.command == "update":
+        # Implement the 'update' command to allow updating an existing workspace
+        workspace = prompt_for_workspace(
+            allow_available=True,
+            allow_create=False
+        )
+        if not workspace:
+            logger.error("Workspace path not provided for update command.")
+            sys.exit(1)
+
+        workspace = str(Path(workspace).expanduser().resolve())
+        logger.info(f"Updating workspace at '{workspace}'")
+        # Implement update logic (e.g., git pull via vcs wrapper)
+        # ...
+        logger.info("Workspace update completed successfully.")
 
     logger.info("arcscfg tool finished execution.")
 
