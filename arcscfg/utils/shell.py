@@ -6,17 +6,19 @@ from typing import List, Optional
 
 logger = logging.getLogger("arcscfg")
 
-def get_shell_setup_file(underlay_path: Path) -> Optional[Path]:
-    """Determine appropriate setup file based on user's shell.
+def get_workspace_setup_file(workspace_path: Path) -> Optional[Path]:
+    """
+    Determine the appropriate setup file based on the user's shell for a given
+    workspace.
 
     Args:
-        underlay_path (Path): The path to the underlay.
+        workspace_path (Path): The path to the workspace or underlay.
 
     Returns:
         Optional[Path]: Path to the setup file if found, else None.
     """
     # Get user's current shell
-    shell = os.environ.get('SHELL', '').lower()
+    shell = os.environ.get('SHELL', '/bin/bash').lower()
 
     # Map shells to their setup files
     setup_files = {
@@ -25,19 +27,22 @@ def get_shell_setup_file(underlay_path: Path) -> Optional[Path]:
         'sh': 'setup.sh'
     }
 
-    # Get the appropriate setup file name
+    # Extract shell name (e.g., 'bash' from '/bin/bash')
     shell_name = Path(shell).name
     # Default to bash if unknown
-    setup_file = setup_files.get(shell_name, 'setup.bash')
+    setup_file_name = setup_files.get(shell_name, 'setup.bash')
+
+    logger.debug(
+        f"Detected shell: {shell_name}, looking for '{setup_file_name}'")
 
     # Possible setup file locations
     possible_paths = [
         # For system installs like /opt/ros/jazzy/setup.bash
-        underlay_path / setup_file,
+        workspace_path / setup_file_name,
         # For colcon workspaces
-        underlay_path / 'install' / setup_file,
+        workspace_path / 'install' / setup_file_name,
         # For catkin workspaces
-        underlay_path / 'devel' / setup_file
+        workspace_path / 'devel' / setup_file_name
     ]
 
     # Try each possible path
@@ -47,7 +52,7 @@ def get_shell_setup_file(underlay_path: Path) -> Optional[Path]:
             return path
 
     logger.warning(f"No setup file found for shell '{shell_name}' "
-                   f"in underlay '{underlay_path}'.")
+                   f"in workspace '{workspace_path}'.")
     return None
 
 def source_setup_file(setup_file: Path) -> bool:
