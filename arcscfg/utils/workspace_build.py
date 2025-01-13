@@ -93,7 +93,7 @@ def build_workspace(workspace_path: str):
         logger.debug(f"Validated 'src' directory in workspace: {workspace}")
 
         # Find and set up underlays
-        underlays = find_ros2_underlays()
+        underlays = find_ros2_underlays([Path("/opt/ros"), Path.home()])
         underlay = prompt_for_underlay(underlays)
 
         if underlay:
