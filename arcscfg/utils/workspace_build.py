@@ -22,7 +22,8 @@ logger = logging.getLogger("arcscfg")
 
 
 def prompt_for_underlay(underlays: List[Path],
-                      default_underlay: Optional[Path] = None) -> Optional[Path]:
+                        default_underlay: Optional[Path] = None,
+                        assume_yes: bool = False) -> Optional[Path]:
     """Prompt the user to select an underlay or enter a custom path, with an
     optional default.
 
@@ -30,10 +31,24 @@ def prompt_for_underlay(underlays: List[Path],
         underlays (List[Path]): List of available underlays.
         default_underlay (Optional[Path]): The default underlay to select if
     present.
+        assume_yes (bool): If True, automatically select the default option.
 
     Returns:
         Optional[Path]: Selected or entered underlay path.
     """
+    if assume_yes:
+        if underlays:
+            selected_underlay = underlays[0]
+            logger.debug(f"Assuming default underlay: {selected_underlay}")
+            return selected_underlay
+        elif default_underlay:
+            logger.debug(
+                f"Assuming provided default underlay: {default_underlay}")
+            return default_underlay
+        else:
+            logger.warning("No underlays available to select by default.")
+            return None
+
     if not underlays:
         logger.warning("No underlays found. Proceeding without underlays.")
         return None
@@ -113,11 +128,12 @@ def prompt_for_underlay(underlays: List[Path],
             print("Invalid selection. Please choose a valid number.")
 
 
-def build_workspace(workspace_path: str):
+def build_workspace(workspace_path: str, assume_yes: bool = False):
     """Build a ROS 2 workspace.
 
     Args:
         workspace_path (str): Path to the ROS 2 workspace.
+        assume_yes (bool): If True, assume yes to defaults without prompting.
     """
     try:
         # Validate workspace path
@@ -141,9 +157,10 @@ def build_workspace(workspace_path: str):
         # Remove duplicates and ensure all underlays are resolved
         underlays = list(set(underlays))
 
-        # Pass the default_underlay to the prompt function
+        # Pass the assume_yes flag to the prompt function
         underlay = prompt_for_underlay(underlays,
-                                       default_underlay=default_underlay)
+                                       default_underlay=default_underlay,
+                                       assume_yes=assume_yes)
 
         if underlay:
             logger.info(f"Using underlay: {underlay}")

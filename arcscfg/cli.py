@@ -19,16 +19,29 @@ def get_workspace_configs() -> List[Path]:
     workspaces_dir = Path(__file__).parent / "config/workspaces"
     return [f.resolve() for f in workspaces_dir.glob("*.yaml") if f.is_file()]
 
-def prompt_for_workspace_configs(workspace_configs: List[Path]) -> Path:
+def prompt_for_workspace_configs(
+        workspace_configs: List[Path], assume_yes: bool) -> Path:
     """Prompt the user to select a workspace configuration.
 
     Args:
         workspace_configs (List[Path]): List of available workspace
     configuration files.
+        assume_yes (bool): If True, automatically select the default option.
 
     Returns:
         Path: Selected workspace configuration file path.
     """
+    if assume_yes:
+        selected_config = workspace_configs[0] if workspace_configs else None
+        if selected_config:
+            logger.debug(
+                f"Assuming default workspace config: {selected_config}")
+            return selected_config
+        else:
+            logger.error(
+                "No workspace configurations available to select by default.")
+            sys.exit(1)
+
     print("\nAvailable workspace configs:")
     for i, workspace_config in enumerate(workspace_configs, start=1):
         print(f"{i}: {workspace_config.name}")
@@ -85,7 +98,8 @@ def infer_default_workspace_path(workspace_config: Path) -> str:
 def prompt_for_workspace(
     default_workspace: Path = None,
     allow_available: bool = True,
-    allow_create: bool = True
+    allow_create: bool = True,
+    assume_yes: bool = False
 ) -> Path:
     """
     Prompt the user to select an existing workspace or specify a workspace path.
@@ -97,10 +111,28 @@ def prompt_for_workspace(
     available workspaces. Defaults to True.
         allow_create (bool, optional): Whether to allow creating/selecting a
     new workspace. Defaults to True.
+        assume_yes (bool): If True, automatically select the default option.
 
     Returns:
         Path: The selected or entered workspace path.
     """
+    if assume_yes:
+        if allow_available:
+            workspaces = find_available_workspaces()
+            if workspaces:
+                selected_workspace = workspaces[0]
+                logger.debug(
+                    f"Assuming default workspace: {selected_workspace}")
+                return selected_workspace
+        if allow_create and default_workspace:
+            workspace = Path(default_workspace).expanduser().resolve()
+            logger.debug(f"Assuming default workspace path: {workspace}")
+            return workspace
+        else:
+            logger.error("No workspaces available and cannot create a new one "
+                         "by default.")
+            sys.exit(1)
+
     if allow_available:
         workspaces = find_available_workspaces()
         print("\nAvailable ROS 2 workspaces in your home directory:")
@@ -181,49 +213,16 @@ def prompt_for_workspace(
                         print(f"Invalid workspace: {e}")
                         continue
                 return workspace
-            elif not allow_create and 1 <= choice_num <= len(workspaces):
+            elif (not allow_create and allow_available and
+                  1 <= choice_num <= len(workspaces)):
                 selected_workspace = workspaces[choice_num - 1]
                 logger.debug(f"User selected existing workspace: "
                              f"{selected_workspace}")
                 return selected_workspace
-            elif not allow_available and allow_create and choice_num == 1:
-                # This case is when allow_available=False and
-                # only option is to create
-                workspace_input = input(
-                    f"Enter the full path for the new workspace (default: "
-                    f"{default_workspace}): "
-                ).strip()
-                if not workspace_input:
-                    workspace_input = str(default_workspace)
-                workspace = Path(workspace_input).expanduser().resolve()
-                if not workspace.exists():
-                    # Attempt to create the workspace
-                    try:
-                        validate_workspace_path(workspace)
-                        validate_src_directory(workspace)
-                        workspace.mkdir(parents=True, exist_ok=True)
-                        logger.debug(f"Created new workspace: {workspace}")
-                    except Exception as e:
-                        logger.error(f"Invalid workspace path: {e}")
-                        print(f"Invalid workspace: {e}")
-                        continue
-                else:
-                    # Workspace exists; confirm it's a valid workspace
-                    try:
-                        validate_workspace_path(workspace)
-                        validate_src_directory(workspace)
-                        logger.debug(
-                            f"Selected existing workspace: {workspace}")
-                    except Exception as e:
-                        logger.error(f"Invalid workspace: {e}")
-                        print(f"Invalid workspace: {e}")
-                        continue
-                return workspace
             else:
                 print("Invalid selection. Please choose a valid number.")
     else:
         # Directly prompt for workspace path without listing
-        # available workspaces
         workspace_input = input(
             f"Enter the full path for the new workspace "
             f"(default: {default_workspace}): "
@@ -245,7 +244,8 @@ def prompt_for_workspace(
                 return prompt_for_workspace(
                     default_workspace=default_workspace,
                     allow_available=allow_available,
-                    allow_create=allow_create
+                    allow_create=allow_create,
+                    assume_yes=assume_yes
                 )
         else:
             # Workspace exists; confirm it's a valid workspace
@@ -260,7 +260,8 @@ def prompt_for_workspace(
                 return prompt_for_workspace(
                     default_workspace=default_workspace,
                     allow_available=allow_available,
-                    allow_create=allow_create
+                    allow_create=allow_create,
+                    assume_yes=assume_yes
                 )
         return workspace
 
@@ -281,10 +282,16 @@ def main():
              f"or provide workspace config path.")
     parser.add_argument("-lf", "--log-file",
                         help="Path to log file.", default="arcscfg.log")
-    parser.add_argument("-v", "--verbosity",
-                        choices=["debug", "info", "warning", "error",
-                                 "critical", "silent"],
-                        default="info", help="Set the logging verbosity level.")
+    parser.add_argument(
+        "-v", "--verbosity",
+        choices=["debug", "info", "warning", "error",
+                 "critical", "silent"],
+        default="info",
+        help="Set the logging verbosity level.")
+    parser.add_argument(
+        "-y", "--yes", "--assume-yes",
+        action="store_true",
+        help="Assume yes to all prompts and use default options.")
 
     args = parser.parse_args()
 
@@ -301,7 +308,8 @@ def main():
                 # Attempt absolute path
                 workspace_config = Path(args.workspace_config).resolve()
                 logger.debug(
-                    f"Using absolute workspace config: {workspace_config}"
+                    f"Attempting to resolve absolute workspace config path: "
+                    f"{workspace_config}"
                 )
                 if not workspace_config.is_file():
                     raise ValueError
@@ -312,7 +320,8 @@ def main():
                                         "config/workspaces" /
                                         args.workspace_config)
                     logger.debug(
-                        f"Using relative workspace config: {workspace_config}"
+                        f"Attempting to resolve relative workspace config: "
+                        f"{workspace_config}"
                     )
                     if not workspace_config.is_file():
                         raise ValueError
@@ -323,8 +332,8 @@ def main():
                                             "config/workspaces" /
                                             f"{args.workspace_config}.yaml")
                         logger.debug(
-                            f"Using workspace config with .yaml extension: "
-                            f"{workspace_config}"
+                            f"Attempting to resolve workspace config path with "
+                            f".yaml extension: {workspace_config}"
                         )
                         if not workspace_config.is_file():
                             raise ValueError
@@ -333,9 +342,13 @@ def main():
                         logger.error(
                             "Unable to resolve workspace config argument!"
                         )
+                        # Reset "assume yes to defaults" to ensure user is
+                        # prompted for workspace config
+                        args.yes = False
         if not workspace_config:
             workspace_configs = get_workspace_configs()
-            workspace_config = prompt_for_workspace_configs(workspace_configs)
+            workspace_config = prompt_for_workspace_configs(
+                workspace_configs, args.yes)
             logger.debug(f"Selected workspace config: {workspace_config}")
 
         if not args.workspace:
@@ -344,8 +357,9 @@ def main():
                 Path(workspace_config))
             workspace = prompt_for_workspace(
                 default_workspace=default_workspace_path,
-                allow_available=False,
-                allow_create=True
+                allow_available=False,  # Disallow selecting from existing workspaces
+                allow_create=True,
+                assume_yes=args.yes
             )
             logger.debug(f"Selected workspace path: {workspace}")
         else:
@@ -367,7 +381,8 @@ def main():
     elif args.command == "build":
         workspace = args.workspace or prompt_for_workspace(
             allow_available=True,
-            allow_create=False
+            allow_create=False,
+            assume_yes=args.yes
         )
         if not workspace:
             logger.error("Workspace path not provided for build command.")
@@ -375,14 +390,15 @@ def main():
 
         workspace = str(Path(workspace).expanduser().resolve())
         logger.info(f"Building workspace at '{workspace}'")
-        build_workspace(workspace)
+        build_workspace(workspace, assume_yes=args.yes)
         logger.info("Workspace build completed successfully.")
 
     elif args.command == "update":
         # Implement the 'update' command to allow updating an existing workspace
         workspace = prompt_for_workspace(
             allow_available=True,
-            allow_create=False
+            allow_create=False,
+            assume_yes=args.yes
         )
         if not workspace:
             logger.error("Workspace path not provided for update command.")
