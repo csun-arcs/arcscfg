@@ -22,8 +22,8 @@ logger = logging.getLogger("arcscfg")
 
 
 def prompt_for_underlay(underlays: List[Path],
-                        default_underlay: Optional[Path] = None,
-                        assume_yes: bool = False) -> Optional[Path]:
+                      default_underlay: Optional[Path] = None,
+                      assume_yes: bool = False) -> Optional[Path]:
     """Prompt the user to select an underlay or enter a custom path, with an
     optional default.
 
@@ -37,14 +37,14 @@ def prompt_for_underlay(underlays: List[Path],
         Optional[Path]: Selected or entered underlay path.
     """
     if assume_yes:
-        if underlays:
-            selected_underlay = underlays[0]
-            logger.debug(f"Assuming default underlay: {selected_underlay}")
-            return selected_underlay
-        elif default_underlay:
+        if default_underlay:
             logger.debug(
                 f"Assuming provided default underlay: {default_underlay}")
             return default_underlay
+        elif underlays:
+            selected_underlay = underlays[0]
+            logger.debug(f"Assuming default underlay: {selected_underlay}")
+            return selected_underlay
         else:
             logger.warning("No underlays available to select by default.")
             return None
