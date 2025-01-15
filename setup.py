@@ -10,6 +10,7 @@ setup(
     install_requires=[
         "pyyaml", # For YAML parsing
         "colorlog",  # For colored logging
+        "appdirs", # For finding log dirs on different systems
     ],
     entry_points={
         "console_scripts": [
