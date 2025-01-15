@@ -265,42 +265,66 @@ def prompt_for_workspace(
                 )
         return workspace
 
-
 def main():
     global logger
     parser = argparse.ArgumentParser(
         description="ARCS Environment Configurator"
     )
-    parser.add_argument("command", choices=["install", "setup", "build",
-                                            "update"],
-                        help="Command to execute")
-    parser.add_argument("-w", "--workspace",
-                        help="ROS 2 workspace path.")
+    parser.add_argument(
+        "command", choices=["install", "setup", "build", "update"],
+        help="Command to execute"
+    )
+    parser.add_argument(
+        "-w", "--workspace",
+        help="ROS 2 workspace path."
+    )
     parser.add_argument(
         "-wc", "--workspace-config",
         help=f"Workspace config. Select from available configs "
-             f"or provide workspace config path.")
-    parser.add_argument("-lf", "--log-file",
-                        help="Path to log file.", default=None)
+             f"or provide workspace config path."
+    )
     parser.add_argument(
         "-v", "--verbosity",
         choices=["debug", "info", "warning", "error",
                  "critical", "silent"],
         default="info",
-        help="Set the logging verbosity level.")
+        help="Set the logging verbosity level. Default: info."
+    )
+    parser.add_argument(
+        "-lfp", "--log-file-path",
+        default=None,
+        help=("Path to log file/directory. If None, system default "
+              "location is selected. Default: None."),
+    )
+    parser.add_argument(
+        "-lms",
+        "--log-max-size",
+        type=int,
+        default=5 * 1024 * 1024,  # 5 MB
+        help="Maximum log file size in bytes before rotation. Default is 5MB."
+    )
+    parser.add_argument(
+        "-lbc",
+        "--log-backup-count",
+        type=int,
+        default=5,
+        help="Number of backup log files to keep. Default is 5."
+    )
     parser.add_argument(
         "-y", "--yes", "--assume-yes",
         action="store_true",
-        help="Assume yes to all prompts and use default options.")
+        help="Assume yes to all prompts and use default options."
+    )
 
     args = parser.parse_args()
 
     # Set up logging
-    if args.log_file:
-        logger = setup_logger(
-            Path(args.log_file).expanduser().resolve(), args.verbosity)
-    else:
-        logger = setup_logger(None, args.verbosity)
+    logger = setup_logger(
+        verbosity=args.verbosity,
+        log_file_path=Path(args.log_file_path) if args.log_file_path else None,
+        max_bytes=args.log_max_size,
+        backup_count=args.log_backup_count
+    )
 
     logger.info("Starting arcscfg tool")
 
@@ -360,7 +384,7 @@ def main():
                 Path(workspace_config))
             workspace = prompt_for_workspace(
                 default_workspace=default_workspace_path,
-                allow_available=False,  # Disallow selecting from existing workspaces
+                allow_available=False, # Disallow selecting from existing workspaces
                 allow_create=True,
                 assume_yes=args.yes
             )

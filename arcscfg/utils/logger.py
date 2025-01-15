@@ -4,11 +4,15 @@ import datetime
 from pathlib import Path
 from typing import Optional
 from appdirs import user_log_dir
+from logging.handlers import RotatingFileHandler
 
 def setup_logger(log_file_path: Optional[Path] = None,
-               verbosity: str = "info",
-               project_name: str = "arcscfg") -> logging.Logger:
-    """Set up a logger that logs to the console and a file with colored output.
+                verbosity: str = "info",
+                project_name: str = "arcscfg",
+                max_bytes: int = 5 * 1024 * 1024,  # 5 MB
+                backup_count: int = 5) -> logging.Logger:
+    """Set up a logger that logs to the console and a file with colored output,
+    including log rotation.
 
     Args:
         log_file_path (Path, optional): Path to the log file or directory.  If a
@@ -17,7 +21,9 @@ def setup_logger(log_file_path: Optional[Path] = None,
         verbosity (str): Logging level ('debug', 'info', 'warning', 'error',
             'critical', 'silent').
         project_name (str): Base name for the log files when a directory is
-            provided.
+        provided.
+        max_bytes (int): Maximum size in bytes before a log file is rotated.
+        backup_count (int): Number of backup log files to keep.
 
     Returns:
         logging.Logger: Configured logger.
@@ -113,8 +119,15 @@ def setup_logger(log_file_path: Optional[Path] = None,
             f"Failed to create or access log file '{final_log_path}': {e}")
         raise
 
-    # File handler with rotation (to be detailed in the next section)
-    file_handler = logging.FileHandler(final_log_path, mode='a')
+    # Rotating File Handler
+    file_handler = RotatingFileHandler(
+        final_log_path,
+        mode='a',
+        maxBytes=max_bytes,
+        backupCount=backup_count,
+        encoding='utf-8',
+        delay=False
+    )
     file_handler.setLevel(logging.DEBUG)  # Log everything to the file
     file_formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -123,7 +136,8 @@ def setup_logger(log_file_path: Optional[Path] = None,
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
-    logger.debug(f"Logging to file: {final_log_path}")
+    logger.debug(f"Logging to file: {final_log_path} with rotation "
+                 f"maxBytes={max_bytes}, backupCount={backup_count}")
 
     # Prevent logging from propagating to the root logger
     logger.propagate = False
