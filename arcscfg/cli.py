@@ -281,7 +281,7 @@ def main():
         help=f"Workspace config. Select from available configs "
              f"or provide workspace config path.")
     parser.add_argument("-lf", "--log-file",
-                        help="Path to log file.", default="arcscfg.log")
+                        help="Path to log file.", default=None)
     parser.add_argument(
         "-v", "--verbosity",
         choices=["debug", "info", "warning", "error",
@@ -296,8 +296,11 @@ def main():
     args = parser.parse_args()
 
     # Set up logging
-    log_file_path = Path(args.log_file).expanduser().resolve()
-    logger = setup_logger(log_file_path, args.verbosity)
+    if args.log_file:
+        logger = setup_logger(
+            Path(args.log_file).expanduser().resolve(), args.verbosity)
+    else:
+        logger = setup_logger(None, args.verbosity)
 
     logger.info("Starting arcscfg tool")
 

@@ -3,3 +3,4 @@
 pyyaml
 pytest
 colorlog
+appdirs
