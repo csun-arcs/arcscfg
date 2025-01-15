@@ -18,8 +18,8 @@ def setup_logger(log_file_path: Optional[Path] = None,
         log_file_path (Path, optional): Path to the log file or directory.  If a
             directory is provided, a timestamped log file is created within it.
             Default: None, which uses a canonical default location.
-        verbosity (str): Logging level ('debug', 'info', 'warning', 'error',
-            'critical', 'silent').
+        verbosity (str): Logging level for console ('debug', 'info', 'warning',
+            'error', 'critical', 'silent').
         project_name (str): Base name for the log files when a directory is
         provided.
         max_bytes (int): Maximum size in bytes before a log file is rotated.
@@ -29,7 +29,7 @@ def setup_logger(log_file_path: Optional[Path] = None,
         logging.Logger: Configured logger.
     """
     logger = logging.getLogger("arcscfg")
-    logger.setLevel(logging.DEBUG)  # Capture all levels; control via handlers
+    logger.setLevel(logging.DEBUG)  # Capture all levels globally
 
     # Define log levels
     level_mapping = {
@@ -72,52 +72,27 @@ def setup_logger(log_file_path: Optional[Path] = None,
 
     log_file_path = log_file_path.expanduser().resolve()
 
+    # Logic for identifying and creating log file
     if log_file_path.exists():
         if log_file_path.is_dir():
-            # Path is a directory that exists
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
             log_filename = f"{project_name}-{timestamp}.log"
             final_log_path = log_file_path / log_filename
         elif log_file_path.is_file():
             final_log_path = log_file_path
-        else:
-            # Neither file nor directory; treat as file path
-            final_log_path = log_file_path
     else:
-        # Path does not exist
-        if log_file_path.suffix:  # Likely a file path
-            # Check if parent directory exists
+        if log_file_path.suffix:  # It's a file path
             parent_dir = log_file_path.parent
-            if not parent_dir.exists():
-                try:
-                    parent_dir.mkdir(parents=True, exist_ok=True)
-                    print(f"Created directory: {parent_dir}")
-                except Exception as e:
-                    logger.error(
-                        f"Failed to create directory '{parent_dir}': {e}")
-                    raise
+            parent_dir.mkdir(parents=True, exist_ok=True)
             final_log_path = log_file_path
-        else:
-            # Path without suffix; treat as directory
-            try:
-                log_file_path.mkdir(parents=True, exist_ok=True)
-                print(f"Created directory: {log_file_path}")
-            except Exception as e:
-                logger.error(
-                    f"Failed to create directory '{log_file_path}': {e}")
-                raise
-            # Directory exists now; create log file with timestamp
+        else:  # It's a directory path
+            log_file_path.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
             log_filename = f"{project_name}-{timestamp}.log"
             final_log_path = log_file_path / log_filename
 
-    try:
-        # Ensure the log file exists
-        final_log_path.touch(exist_ok=True)
-    except Exception as e:
-        logger.error(
-            f"Failed to create or access log file '{final_log_path}': {e}")
-        raise
+    # Create log file if needed
+    final_log_path.touch(exist_ok=True)
 
     # Rotating File Handler
     file_handler = RotatingFileHandler(
