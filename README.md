@@ -1,3 +1,3 @@
 <!-- arcscfg/README.md -->
 
-# CSUN ARCS environment configurator
+# CSUN ARCS Environment Configurator
