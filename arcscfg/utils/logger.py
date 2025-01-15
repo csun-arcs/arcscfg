@@ -1,14 +1,23 @@
 import logging
-from pathlib import Path
 import colorlog
+from pathlib import Path
+from typing import Optional
+import datetime
+import os
 
-def setup_logger(log_file_path: Path, verbosity: str = "info") -> logging.Logger:
+def setup_logger(log_file_path: Optional[Path] = None,
+                verbosity: str = "info",
+                project_name: str = "arcscfg") -> logging.Logger:
     """Set up a logger that logs to the console and a file with colored output.
 
     Args:
-        log_file_path (Path): Path to the log file.
+        log_file_path (Path, optional): Path to the log file or directory.  If a
+            directory is provided, a timestamped log file is created within it.
+            Default: None.
         verbosity (str): Logging level ('debug', 'info', 'warning', 'error',
-    'critical', 'silent').
+            'critical', 'silent').
+        project_name (str): Base name for the log files when a directory is
+        provided.
 
     Returns:
         logging.Logger: Configured logger.
@@ -49,9 +58,60 @@ def setup_logger(log_file_path: Path, verbosity: str = "info") -> logging.Logger
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
-    # File handler (only if verbosity is not silent)
-    if verbosity.lower() != "silent":
-        file_handler = logging.FileHandler(log_file_path)
+    # File handler
+    if log_file_path:
+        log_file_path = log_file_path.expanduser().resolve()
+
+        if log_file_path.exists():
+            if log_file_path.is_dir():
+                # Path is a directory that exists
+                timestamp = datetime.datetime.now().strftime(
+                    "%Y-%m-%d-%H-%M-%S")
+                log_filename = f"{project_name}-{timestamp}.log"
+                final_log_path = log_file_path / log_filename
+            elif log_file_path.is_file():
+                final_log_path = log_file_path
+            else:
+                # Neither file nor directory; treat as file path
+                final_log_path = log_file_path
+        else:
+            # Path does not exist
+            if log_file_path.suffix:  # Likely a file path
+                # Check if parent directory exists
+                parent_dir = log_file_path.parent
+                if not parent_dir.exists():
+                    try:
+                        parent_dir.mkdir(parents=True, exist_ok=True)
+                        print(f"Created directory: {parent_dir}")
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to create directory '{parent_dir}': {e}")
+                        raise
+                final_log_path = log_file_path
+            else:
+                # Path without suffix; treat as directory
+                try:
+                    log_file_path.mkdir(parents=True, exist_ok=True)
+                    print(f"Created directory: {log_file_path}")
+                except Exception as e:
+                    logger.error(
+                        f"Failed to create directory '{log_file_path}': {e}")
+                    raise
+                # Directory doesn't exist; create log file with timestamp
+                timestamp = datetime.datetime.now().strftime(
+                    "%Y-%m-%d-%H-%M-%S")
+                log_filename = f"{project_name}-{timestamp}.log"
+                final_log_path = log_file_path / log_filename
+
+        try:
+            # Ensure the log file exists
+            final_log_path.touch(exist_ok=True)
+        except Exception as e:
+            logger.error(
+                f"Failed to create or access log file '{final_log_path}': {e}")
+            raise
+
+        file_handler = logging.FileHandler(final_log_path, mode='a')
         file_handler.setLevel(logging.DEBUG)  # Log everything to the file
         file_formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -59,6 +119,8 @@ def setup_logger(log_file_path: Path, verbosity: str = "info") -> logging.Logger
         )
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
+
+        logger.debug(f"Logging to file: {final_log_path}")
 
     # Prevent logging from propagating to the root logger
     logger.propagate = False
