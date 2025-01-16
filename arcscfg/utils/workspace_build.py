@@ -13,7 +13,7 @@ from .workspace_validation import (
 )
 from .shell import (
     get_workspace_setup_file,
-    source_setup_file,
+    source_file,
     run_command
 )
 
@@ -167,7 +167,7 @@ def build_workspace(workspace_path: str, assume_yes: bool = False):
             setup_file = get_workspace_setup_file(underlay)
             if setup_file:
                 logger.debug(f"Sourcing setup file: {setup_file}")
-                if source_setup_file(setup_file):
+                if source_file(setup_file):
                     logger.info("Successfully sourced setup file.")
                     if not verify_ros_setup():
                         logger.warning(

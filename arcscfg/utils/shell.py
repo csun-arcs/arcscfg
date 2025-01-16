@@ -55,49 +55,42 @@ def get_workspace_setup_file(workspace_path: Path) -> Optional[Path]:
                    f"in workspace '{workspace_path}'.")
     return None
 
-def source_setup_file(setup_file: Path) -> bool:
-    """Source the appropriate setup file and update environment.
+def source_file(setup_file: Path) -> bool:
+    """
+    Source the specified file and update the current process environment.
 
     Args:
-        setup_file (Path): Path to the setup file.
+        setup_file (Path): Path to the file that should be sourced.
 
     Returns:
         bool: True if sourcing was successful, False otherwise.
     """
+    shell = os.environ.get('SHELL', '/bin/bash')
+    source_cmd = f"source {setup_file} && env"
+
     try:
-        # Get the current shell
-        shell = os.environ.get('SHELL', '/bin/bash')
-
-        # Create the source command
-        source_cmd = f"source {setup_file} && env"
-
-        # Execute the source command and capture environment
-        proc = subprocess.Popen(
+        result = run_command(
             [shell, '-c', source_cmd],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True
+            capture_output=True,
+            verbose=False
         )
-
-        stdout, stderr = proc.communicate()
-
-        if proc.returncode != 0:
-            logger.error(f"Error sourcing setup file: {stderr.strip()}")
-            return False
-
-        # Parse the environment variables
-        for line in stdout.splitlines():
-            if '=' not in line:
-                continue
-            key, value = line.strip().split('=', 1)
-            os.environ[key] = value
-
-        logger.debug(f"Successfully sourced setup file: {setup_file}")
-        return True
-
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error sourcing setup file: {e.stderr.strip()}")
+        logger.error(f"Error sourcing setup file '{setup_file}': {e.stderr.strip()}")
         return False
+
+    if result.returncode != 0:
+        logger.error(f"Error sourcing setup file '{setup_file}': {result.stderr.strip()}")
+        return False
+
+    # Update environment variables
+    for line in result.stdout.splitlines():
+        if '=' not in line:
+            continue
+        key, value = line.strip().split('=', 1)
+        os.environ[key] = value
+
+    logger.debug(f"Successfully sourced file: {setup_file}")
+    return True
 
 def run_command(command: List[str], cwd: Optional[str] = None, capture_output: bool = True,
               verbose: bool = False) -> subprocess.CompletedProcess:
