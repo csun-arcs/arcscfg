@@ -11,11 +11,7 @@ from .workspace_validation import (
     verify_ros_setup,
     find_ros2_underlays
 )
-from .shell import (
-    get_workspace_setup_file,
-    source_file,
-    run_command
-)
+from .shell import Shell
 
 # Initialize logger
 logger = logging.getLogger("arcscfg")
@@ -115,7 +111,7 @@ def prompt_for_underlay(underlays: List[Path],
                 print("Provided underlay path does not exist. "
                       "Please enter a valid path.")
                 continue
-            setup_file = get_workspace_setup_file(custom_underlay)
+            setup_file = Shell.get_workspace_setup_file(custom_underlay)
             if not setup_file or not setup_file.exists():
                 logger.error(f"No setup file found in the custom underlay: "
                              f"{custom_underlay}")
@@ -164,10 +160,10 @@ def build_workspace(workspace_path: str, assume_yes: bool = False):
 
         if underlay:
             logger.info(f"Using underlay: {underlay}")
-            setup_file = get_workspace_setup_file(underlay)
+            setup_file = Shell.get_workspace_setup_file(underlay)
             if setup_file:
                 logger.debug(f"Sourcing setup file: {setup_file}")
-                if source_file(setup_file):
+                if Shell.source_file(setup_file):
                     logger.info("Successfully sourced setup file.")
                     if not verify_ros_setup():
                         logger.warning(
@@ -180,7 +176,7 @@ def build_workspace(workspace_path: str, assume_yes: bool = False):
 
         # Proceed with build
         logger.info("Starting workspace build using colcon...")
-        run_command(["colcon", "build"], cwd=str(workspace), verbose=True)
+        Shell.run_command(["colcon", "build"], cwd=str(workspace), verbose=True)
         logger.info("Workspace build completed successfully.")
 
     except subprocess.CalledProcessError as e:

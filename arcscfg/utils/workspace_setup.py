@@ -10,7 +10,7 @@ from .workspace_validation import (
     validate_workspace_config,
     validate_src_directory,
 )
-from .shell import run_command
+from .shell import Shell
 
 # Initialize logger
 logger = logging.getLogger("arcscfg")
@@ -24,8 +24,9 @@ def clone_repos(workspace: Path, workspace_config: Path):
     """
     try:
         logger.info("Cloning repositories...")
-        run_command(["vcs", "import", "--input", str(workspace_config), "src"],
-                    cwd=str(workspace), verbose=True)
+        Shell.run_command(
+            ["vcs", "import", "--input", str(workspace_config), "src"],
+            cwd=str(workspace), verbose=True)
         logger.info("Repositories cloned successfully.")
     except subprocess.CalledProcessError:
         logger.error("Failed to clone repositories.")
