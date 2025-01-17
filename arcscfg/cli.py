@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 from arcscfg.utils.workspace_setup import setup_workspace
 from arcscfg.utils.workspace_build import build_workspace
-from arcscfg.utils.logger import setup_logger
+from arcscfg.utils.logger import Logger
 from arcscfg.utils.workspace_validation import find_available_workspaces
 
 from arcscfg.utils.workspace_validation import (
@@ -319,7 +319,7 @@ def main():
     args = parser.parse_args()
 
     # Set up logging
-    logger = setup_logger(
+    logger = Logger(
         verbosity=args.verbosity,
         log_file_path=Path(args.log_file_path) if args.log_file_path else None,
         max_bytes=args.log_max_size,
