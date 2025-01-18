@@ -8,56 +8,6 @@ logger = logging.getLogger("arcscfg")
 
 class Shell:
     @staticmethod
-    def get_workspace_setup_file(workspace_path: Path) -> Optional[Path]:
-        """
-        Determine the appropriate setup file based on the user's shell for a
-        given workspace.
-
-        Args:
-            workspace_path (Path): The path to the workspace or underlay.
-
-        Returns:
-            Optional[Path]: Path to the setup file if found, else None.
-        """
-        # Get user's current shell
-        shell = os.environ.get('SHELL', '/bin/bash').lower()
-
-        # Map shells to their setup files
-        setup_files = {
-            'zsh': 'setup.zsh',
-            'bash': 'setup.bash',
-            'sh': 'setup.sh'
-        }
-
-        # Extract shell name (e.g., 'bash' from '/bin/bash')
-        shell_name = Path(shell).name
-        # Default to bash if unknown
-        setup_file_name = setup_files.get(shell_name, 'setup.bash')
-
-        logger.debug(
-            f"Detected shell: {shell_name}, looking for '{setup_file_name}'")
-
-        # Possible setup file locations
-        possible_paths = [
-            # For system installs like /opt/ros/jazzy/setup.bash
-            workspace_path / setup_file_name,
-            # For colcon workspaces
-            workspace_path / 'install' / setup_file_name,
-            # For catkin workspaces
-            workspace_path / 'devel' / setup_file_name
-        ]
-
-        # Try each possible path
-        for path in possible_paths:
-            if path.exists():
-                logger.debug(f"Found setup file: {path}")
-                return path
-
-        logger.warning(f"No setup file found for shell '{shell_name}' "
-                    f"in workspace '{workspace_path}'.")
-        return None
-
-    @staticmethod
     def source_file(setup_file: Path) -> bool:
         """
         Source the specified file and update the current process environment.

@@ -111,7 +111,7 @@ class WorkspaceManager:
 
             if underlay:
                 self.logger.info(f"Using underlay: {underlay}")
-                setup_file = Shell.get_workspace_setup_file(underlay)
+                setup_file = self.get_workspace_setup_file(underlay)
                 if setup_file:
                     self.logger.debug(f"Sourcing setup file: {setup_file}")
                     if Shell.source_file(setup_file):
@@ -203,6 +203,54 @@ class WorkspaceManager:
             self.logger.debug(f"'src' directory validated at {src_dir}")
         return src_dir
 
+    def get_workspace_setup_file(self, workspace_path: Path) -> Optional[Path]:
+        """
+        Determine the appropriate setup file based on the user's shell for a
+        given workspace.
+
+        Args:
+            workspace_path (Path): The path to the workspace or underlay.
+
+        Returns:
+            Optional[Path]: Path to the setup file if found, else None.
+        """
+        # Get user's current shell
+        shell = os.environ.get('SHELL', '/bin/bash').lower()
+
+        # Map shells to their setup files
+        setup_files = {
+            'zsh': 'setup.zsh',
+            'bash': 'setup.bash',
+            'sh': 'setup.sh'
+        }
+
+        # Extract shell name (e.g., 'bash' from '/bin/bash')
+        shell_name = Path(shell).name
+        # Default to bash if unknown
+        setup_file_name = setup_files.get(shell_name, 'setup.bash')
+
+        self.logger.debug(
+            f"Detected shell: {shell_name}, looking for '{setup_file_name}'")
+
+        # Possible setup file locations
+        possible_paths = [
+            # For system installs like /opt/ros/jazzy/setup.bash
+            workspace_path / setup_file_name,
+            # For colcon workspaces
+            workspace_path / 'install' / setup_file_name,
+            # For catkin workspaces
+            workspace_path / 'devel' / setup_file_name
+        ]
+
+        # Try each possible path
+        for path in possible_paths:
+            if path.exists():
+                self.logger.debug(f"Found setup file: {path}")
+                return path
+
+        self.logger.warning(f"No setup file found for shell '{shell_name}' "
+                            f"in workspace '{workspace_path}'.")
+        return None
 
     def parse_setup_bash(self, setup_bash_path: Path) -> Optional[str]:
         """
@@ -633,7 +681,7 @@ class WorkspaceManager:
                         "Please enter a valid path."
                     )
                     continue
-                setup_file = Shell.get_workspace_setup_file(custom_underlay)
+                setup_file = self.get_workspace_setup_file(custom_underlay)
                 if not setup_file or not setup_file.exists():
                     self.logger.error(
                         f"No setup file found in the custom underlay: "
