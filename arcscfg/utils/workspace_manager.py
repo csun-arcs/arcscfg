@@ -203,6 +203,18 @@ class WorkspaceManager:
             self.logger.debug(f"'src' directory validated at {src_dir}")
         return src_dir
 
+    @staticmethod
+    def infer_default_workspace_path(workspace_config: Path) -> Path:
+        """
+        Infer a default workspace path based on the workspace config.
+
+        For example, if the config is 'cohort.yaml', suggest '~/cohort_ws'.
+        """
+        config_name = workspace_config.stem
+        suggested_name = f"{config_name}_ws"
+        default_workspace = Path.home() / suggested_name
+        return default_workspace
+
     def get_workspace_setup_file(self, workspace_path: Path) -> Optional[Path]:
         """
         Determine the appropriate setup file based on the user's shell for a
