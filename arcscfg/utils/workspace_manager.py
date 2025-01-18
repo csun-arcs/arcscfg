@@ -1,14 +1,14 @@
-import logging
 import os
+import re
 import sys
 import yaml
+import subprocess
+
 from pathlib import Path
 from typing import List, Optional
-import subprocess
 
 from .shell import Shell
 from .logger import Logger
-from .workspace_setup_parser import parse_setup_bash
 
 
 class WorkspaceManager:
@@ -81,7 +81,8 @@ class WorkspaceManager:
         """Build the workspace."""
         try:
             # Validate workspace path
-            workspace = self.validate_workspace_path(self.workspace_path)
+            workspace = self.validate_workspace_path(self.workspace_path,
+                                                     allow_create=False)
             self.logger.debug(
                 f"Validated workspace path for build: {workspace}")
 
@@ -90,7 +91,7 @@ class WorkspaceManager:
 
             # Determine the path to setup.bash
             setup_bash_path = workspace / "install" / "setup.bash"
-            default_underlay_path_str = parse_setup_bash(setup_bash_path)
+            default_underlay_path_str = self.parse_setup_bash(setup_bash_path)
             default_underlay = (
                 Path(default_underlay_path_str)
                 if default_underlay_path_str else None
@@ -137,13 +138,15 @@ class WorkspaceManager:
             self.logger.error(f"Unexpected error: {e}")
             sys.exit(1)
 
-    def validate_workspace_path(self, workspace_path: Path) -> Path:
+    def validate_workspace_path(self,
+                              workspace_path: Path,
+                              allow_create: bool = True) -> Path:
         """Validate that the workspace path is writable."""
         if workspace_path.exists():
             if not os.access(workspace_path, os.W_OK):
                 raise PermissionError(
                     f"No write permission for {workspace_path}")
-        else:
+        elif allow_create:
             # Attempt to create the workspace directory
             try:
                 workspace_path.mkdir(parents=True, exist_ok=True)
@@ -153,6 +156,8 @@ class WorkspaceManager:
                 raise PermissionError(
                     f"Cannot create workspace directory: {workspace_path}"
                 ) from e
+        else:
+            raise ValueError("Workspace path does not exist.")
         self.logger.debug(f"Workspace path validated: {workspace_path}")
         return workspace_path
 
@@ -197,6 +202,62 @@ class WorkspaceManager:
         else:
             self.logger.debug(f"'src' directory validated at {src_dir}")
         return src_dir
+
+
+    def parse_setup_bash(self, setup_bash_path: Path) -> Optional[str]:
+        """
+        Parse the setup.bash file to extract the last underlay in the build
+        chain (the second-last COLCON_CURRENT_PREFIX entry in the setup file).
+
+        Args:
+            setup_bash_path (Path): Path to the setup.bash file.
+
+        Returns:
+            Optional[str]: The inferred underlay path if found, else None.
+        """
+        if not setup_bash_path.exists():
+            self.logger.warning(f"Setup file does not exist: {setup_bash_path}")
+            return None
+
+        colcon_prefix_pattern = re.compile(r'^COLCON_CURRENT_PREFIX="(.+)"$')
+        prefixes = []
+
+        try:
+            with setup_bash_path.open('r') as file:
+                for line in file:
+                    match = colcon_prefix_pattern.match(line.strip())
+                    if match:
+                        prefixes.append(match.group(1))
+
+            if len(prefixes) >= 2:
+                default_underlay = prefixes[-2]
+                self.logger.debug(
+                    f"Inferred default underlay before stripping: "
+                    f"{default_underlay}")
+
+                # Strip '/install' or '/devel' only if present at the end
+                if default_underlay.endswith(('/install', '/devel')):
+                    stripped_underlay = Path(default_underlay).parent
+                    default_underlay_str = str(stripped_underlay)
+                    self.logger.debug(
+                        f"Inferred default underlay after stripping: "
+                        f"{default_underlay_str}")
+                else:
+                    # Retain the original path if no stripping is needed
+                    default_underlay_str = default_underlay
+                    self.logger.debug(
+                        f"Inferred default underlay without stripping: "
+                        f"{default_underlay_str}")
+
+                return default_underlay_str
+            else:
+                self.logger.warning(
+                    "Not enough COLCON_CURRENT_PREFIX entries found.")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"Error parsing setup.bash: {e}")
+            return None
 
     def clone_repositories(self, workspace: Path, workspace_config: Path):
         """Clone repos defined in the workspace config file to the ROS 2
@@ -327,10 +388,9 @@ class WorkspaceManager:
 
             if allow_create:
                 print(f"{len(workspaces)+1}: Create a new workspace")
-                create_option = len(workspaces) + 1
             else:
                 print(f"{len(workspaces)+1}: Enter an existing workspace path")
-                create_option = len(workspaces) + 1
+            create_option = custom_option = len(workspaces) + 1
 
             while True:
                 try:
@@ -423,6 +483,25 @@ class WorkspaceManager:
                         f"{selected_workspace}"
                     )
                     return selected_workspace
+                elif not allow_create and choice_num == custom_option:
+                    workspace_input = input(
+                        f"Enter the full path to an existing workspace "
+                        f"(default: {default_workspace}): "
+                    ).strip()
+                    if not workspace_input:
+                        workspace_input = str(default_workspace)
+                    workspace = Path(workspace_input).expanduser().resolve()
+                    try:
+                        self.validate_workspace_path(workspace, allow_create=False)
+                        self.validate_src_directory(workspace)
+                        self.logger.debug(
+                            f"Selected existing workspace: {workspace}"
+                        )
+                    except Exception as e:
+                        self.logger.error(f"Invalid workspace: {e}")
+                        print(f"Invalid workspace: {e}")
+                        continue
+                    return workspace
                 else:
                     print("Invalid selection. Please choose a valid number.")
         else:
