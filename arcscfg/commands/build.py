@@ -37,7 +37,8 @@ class BuildCommand(BaseCommand):
         """
         if self.args.workspace:
             workspace_path = Path(self.args.workspace).expanduser().resolve()
-            self.logger.debug(f"Using provided workspace path: {workspace_path}")
+            self.logger.debug(
+                f"Using provided workspace path: {workspace_path}")
             return workspace_path
         else:
             manager = WorkspaceManager(
@@ -52,5 +53,6 @@ class BuildCommand(BaseCommand):
                 allow_create=False,
             )
             if workspace_path:
-                self.logger.debug(f"User selected workspace path: {workspace_path}")
+                self.logger.debug(
+                    f"User selected workspace path: {workspace_path}")
             return workspace_path

@@ -43,7 +43,8 @@ class WorkspaceManager:
             ValueError: If the workspace path is invalid.
         """
         self.logger.debug(f"Setting workspace path to: {workspace_path}")
-        validated_workspace = self.validate_workspace_path(workspace_path)
+        validated_workspace = self.validate_workspace_path(
+            workspace_path, allow_create=True)
         self.workspace_path = validated_workspace
         self.logger.debug(f"Workspace path set to: {self.workspace_path}")
 
@@ -56,7 +57,8 @@ class WorkspaceManager:
                                  "Use `set_workspace_path` first.")
 
             # Validate workspace path
-            workspace = self.validate_workspace_path(self.workspace_path)
+            workspace = self.validate_workspace_path(
+                self.workspace_path, allow_create=True)
 
             # Load and validate workspace configuration
             with open(self.workspace_config, "r") as f:
@@ -64,7 +66,7 @@ class WorkspaceManager:
             self.validate_workspace_config(config)
 
             # Validate/create src directory
-            self.validate_src_directory(workspace)
+            self.validate_src_directory(workspace, allow_create=True)
 
             self.logger.info(
                 f"Setting up workspace at '{workspace}' "
@@ -77,12 +79,34 @@ class WorkspaceManager:
             self.logger.error(f"Error setting up workspace: {e}")
             sys.exit(1)
 
+    def update_workspace(self):
+        """Update workspace by pulling repositories therein."""
+        try:
+            if not self.workspace_path:
+                raise ValueError("Workspace path is not set. "
+                                 "Use `set_workspace_path` first.")
+
+            # Validate workspace path
+            workspace = self.validate_workspace_path(self.workspace_path)
+
+            # Validate src directory
+            self.validate_src_directory(workspace)
+
+            self.logger.info(
+                f"Updating workspace at '{workspace}'"
+            )
+
+            # Pull repositories
+            self.pull_repositories(workspace)
+        except Exception as e:
+            self.logger.error(f"Error updating workspace: {e}")
+            sys.exit(1)
+
     def build_workspace(self):
         """Build the workspace."""
         try:
             # Validate workspace path
-            workspace = self.validate_workspace_path(self.workspace_path,
-                                                     allow_create=False)
+            workspace = self.validate_workspace_path(self.workspace_path)
             self.logger.debug(
                 f"Validated workspace path for build: {workspace}")
 
@@ -140,7 +164,7 @@ class WorkspaceManager:
 
     def validate_workspace_path(self,
                               workspace_path: Path,
-                              allow_create: bool = True) -> Path:
+                              allow_create: bool = False) -> Path:
         """Validate that the workspace path is writable."""
         if workspace_path.exists():
             if not os.access(workspace_path, os.W_OK):
@@ -191,12 +215,16 @@ class WorkspaceManager:
         self.logger.debug("Workspace configuration validated successfully.")
         return config
 
-    def validate_src_directory(self, workspace_path: Path) -> Path:
+    def validate_src_directory(
+            self, workspace_path: Path, allow_create: bool = False) -> Path:
         """Validate that the workspace has a 'src' directory."""
         src_dir = workspace_path / "src"
         if not src_dir.exists():
-            src_dir.mkdir(parents=True)
-            self.logger.debug(f"Created 'src' directory at {src_dir}")
+            if allow_create:
+                src_dir.mkdir(parents=True)
+                self.logger.debug(f"Created 'src' directory at {src_dir}")
+            else:
+                raise ValueError(f"'{src_dir}' does not exist.")
         elif not src_dir.is_dir():
             raise ValueError(f"'{src_dir}' exists but is not a directory")
         else:
@@ -332,6 +360,19 @@ class WorkspaceManager:
             self.logger.info("Repositories cloned successfully.")
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Failed to clone repositories: {e}")
+            sys.exit(1)
+
+    def pull_repositories(self, workspace: Path):
+        try:
+            self.logger.info("Pulling repositories...")
+            Shell.run_command(
+                ["vcs", "pull", "src"],
+                cwd=str(workspace),
+                verbose=True,
+            )
+            self.logger.info("Repositories pulled successfully.")
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Failed to pull repositories: {e}")
             sys.exit(1)
 
     def find_available_workspaces(self,
@@ -511,8 +552,10 @@ class WorkspaceManager:
                     workspace = Path(workspace_input).expanduser().resolve()
                     if not workspace.exists():
                         try:
-                            self.validate_workspace_path(workspace)
-                            self.validate_src_directory(workspace)
+                            self.validate_workspace_path(
+                                workspace, allow_create=True)
+                            self.validate_src_directory(
+                                workspace, allow_create=True)
                             workspace.mkdir(parents=True, exist_ok=True)
                             self.logger.debug(
                                 f"Created new workspace: {workspace}")
@@ -522,8 +565,10 @@ class WorkspaceManager:
                             continue
                     else:
                         try:
-                            self.validate_workspace_path(workspace)
-                            self.validate_src_directory(workspace)
+                            self.validate_workspace_path(
+                                workspace, allow_create=True)
+                            self.validate_src_directory(
+                                workspace, allow_create=True)
                             self.logger.debug(
                                 f"Selected existing workspace: {workspace}"
                             )
@@ -552,7 +597,7 @@ class WorkspaceManager:
                         workspace_input = str(default_workspace)
                     workspace = Path(workspace_input).expanduser().resolve()
                     try:
-                        self.validate_workspace_path(workspace, allow_create=False)
+                        self.validate_workspace_path(workspace)
                         self.validate_src_directory(workspace)
                         self.logger.debug(
                             f"Selected existing workspace: {workspace}"
@@ -574,8 +619,8 @@ class WorkspaceManager:
             workspace = Path(workspace_input).expanduser().resolve()
             if not workspace.exists():
                 try:
-                    self.validate_workspace_path(workspace)
-                    self.validate_src_directory(workspace)
+                    self.validate_workspace_path(workspace, allow_create=True)
+                    self.validate_src_directory(workspace, allow_create=True)
                     workspace.mkdir(parents=True, exist_ok=True)
                     self.logger.debug(f"Created new workspace: {workspace}")
                 except Exception as e:
