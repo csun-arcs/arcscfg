@@ -1,0 +1,7 @@
+---
+apt:
+  - foo_apt_package
+  - bar_apt_package
+pip:
+  - foo_pip_package: 1.2.3
+  - bar_pip_package
