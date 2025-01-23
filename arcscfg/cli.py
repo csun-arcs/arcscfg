@@ -37,11 +37,11 @@ def main():
         "-pim",
         "--pip-install-method",
         choices=["user", "pipx", "venv"],
-        default="user",
+        default="pipx",
         help=(
             "Method to install pip packages: 'user' installs with '--user', "
             "'pipx' uses pipx, 'venv' uses a virtual environment. "
-            "Default is 'user'."
+            "Default is 'pipx'."
         ),
     )
     parser.add_argument(
