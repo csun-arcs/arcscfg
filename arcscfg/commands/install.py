@@ -26,6 +26,7 @@ class InstallCommand(BaseCommand):
             # Handle ROS 2 installation
             if self.args.install_ros2:
                 ros_distro = self._prompt_for_ros_distro()
+                dep_manager.context["ros_distro"] = ros_distro  # Add context
                 self._install_ros2(ros_distro)
             else:
                 if not self.args.yes:
@@ -34,6 +35,7 @@ class InstallCommand(BaseCommand):
                     )
                     if install_ros2 == "y":
                         ros_distro = self._prompt_for_ros_distro()
+                        dep_manager.context["ros_distro"] = ros_distro  # Add context
                         dep_manager.install_ros2(ros_distro)
         except Exception as e:
             self.logger.error(f"An error occurred during ROS 2 installation: {e}")
@@ -48,6 +50,10 @@ class InstallCommand(BaseCommand):
             dep_manager.pip_install_method = self.args.pip_install_method or "user"
             dep_manager.assume_yes = self.args.yes
 
+            # Pass the ros_distro context to install dependencies
+            if "ros_distro" not in dep_manager.context:
+                dep_manager.context["ros_distro"] = self.args.ros_distro
+
             dep_manager.install_dependencies()
             self.logger.info("Dependencies installed successfully.")
         except Exception as e:
@@ -55,7 +61,7 @@ class InstallCommand(BaseCommand):
             sys.exit(1)
 
     def _prompt_for_ros_distro(self):
-        available_distros = [
+        available_distros=[
             "ardent",
             "bouncy",
             "crystal",
@@ -113,6 +119,7 @@ class InstallCommand(BaseCommand):
             logger=self.logger,
             assume_yes=self.args.yes,
             pip_install_method="user",
+            context={"ros_distro": ros_distro},  # Pass context
         )
         dep_manager.install_ros2(ros_distro)
 

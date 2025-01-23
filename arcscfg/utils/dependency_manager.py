@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+from string import Template
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
@@ -15,6 +16,7 @@ class DependencyManager:
         logger: Optional[Logger] = None,
         assume_yes: bool = False,
         pip_install_method: str = "user",  # Options: 'user', 'pipx', 'venv'
+        context: Optional[Dict[str, str]] = None,  # Context for template substitution
     ):
         if dependencies_file:
             self.dependencies_file = Path(dependencies_file)
@@ -24,6 +26,7 @@ class DependencyManager:
         self.assume_yes = assume_yes
         self.pip_install_method = pip_install_method
         self.dependencies = {}  # type: Dict[str, Any]
+        self.context = context or {}
 
     def load_dependencies(self):
         if not self.dependencies_file:
@@ -37,8 +40,20 @@ class DependencyManager:
                 f"Dependencies file not found: {self.dependencies_file}"
             )
         with self.dependencies_file.open("r") as f:
-            self.dependencies = yaml.safe_load(f)
-        self.logger.debug(f"Loaded dependencies: {self.dependencies}")
+            raw_content = f.read()
+
+        # Perform template substitution
+        template = Template(raw_content)
+        try:
+            substituted_content = template.safe_substitute(self.context)
+        except KeyError as e:
+            self.logger.error(f"Missing substitution variable: {e}")
+            raise
+
+        self.dependencies = yaml.safe_load(substituted_content)
+        self.logger.debug(
+            f"Loaded dependencies after substitution: {self.dependencies}"
+        )
 
     def install_dependencies(self):
         if not self.dependencies_file:
