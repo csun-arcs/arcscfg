@@ -1,7 +1,10 @@
-from .base import BaseCommand
-from arcscfg.utils.workspace_manager import WorkspaceManager
-from pathlib import Path
 import sys
+from pathlib import Path
+
+from arcscfg.utils.workspace_manager import WorkspaceManager
+
+from .base import BaseCommand
+
 
 class UpdateCommand(BaseCommand):
     """
