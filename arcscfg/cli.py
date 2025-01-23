@@ -37,12 +37,40 @@ def main():
         "-pim",
         "--pip-install-method",
         choices=["user", "pipx", "venv"],
-        default="pipx",
+        default="user",
         help=(
             "Method to install pip packages: 'user' installs with '--user', "
             "'pipx' uses pipx, 'venv' uses a virtual environment. "
-            "Default is 'pipx'."
+            "Default is 'user'."
         ),
+    )
+    parser.add_argument(
+        "-rd",
+        "--ros-distro",
+        choices=[
+            "ardent",
+            "bouncy",
+            "crystal",
+            "dashing",
+            "eloquent",
+            "foxy",
+            "galactic",
+            "humble",
+            "iron",
+            "jazzy",
+            "rolling",
+        ],
+        default="jazzy",
+        help=(
+            "ROS 2 distribution to install (e.g., 'iron', 'jazzy', 'rolling'). "
+            "Default: 'jazzy'."
+        ),
+    )
+    parser.add_argument(
+        "-ir",
+        "--install-ros2",
+        action="store_true",
+        help="Automate the installation of ROS 2.",
     )
     parser.add_argument(
         "-v",

@@ -1,14 +1,14 @@
 import os
 import re
-import sys
-import yaml
 import subprocess
-
+import sys
 from pathlib import Path
 from typing import List, Optional
 
-from .shell import Shell
+import yaml
+
 from .logger import Logger
+from .shell import Shell
 
 
 class WorkspaceManager:
@@ -23,12 +23,10 @@ class WorkspaceManager:
         self.assume_yes = assume_yes
 
         self.workspace_path = (
-            Path(workspace_path).expanduser().resolve()
-            if workspace_path else None
+            Path(workspace_path).expanduser().resolve() if workspace_path else None
         )
         self.workspace_config = (
-            Path(workspace_config).expanduser().resolve()
-            if workspace_config else None
+            Path(workspace_config).expanduser().resolve() if workspace_config else None
         )
 
     def set_workspace_path(self, workspace_path: Path):
@@ -44,7 +42,8 @@ class WorkspaceManager:
         """
         self.logger.debug(f"Setting workspace path to: {workspace_path}")
         validated_workspace = self.validate_workspace_path(
-            workspace_path, allow_create=True)
+            workspace_path, allow_create=True
+        )
         self.workspace_path = validated_workspace
         self.logger.debug(f"Workspace path set to: {self.workspace_path}")
 
@@ -53,12 +52,14 @@ class WorkspaceManager:
         workspace_config."""
         try:
             if not self.workspace_path:
-                raise ValueError("Workspace path is not set. "
-                                 "Use `set_workspace_path` first.")
+                raise ValueError(
+                    "Workspace path is not set. " "Use `set_workspace_path` first."
+                )
 
             # Validate workspace path
             workspace = self.validate_workspace_path(
-                self.workspace_path, allow_create=True)
+                self.workspace_path, allow_create=True
+            )
 
             # Load and validate workspace configuration
             with open(self.workspace_config, "r") as f:
@@ -83,8 +84,9 @@ class WorkspaceManager:
         """Update workspace by pulling repositories therein."""
         try:
             if not self.workspace_path:
-                raise ValueError("Workspace path is not set. "
-                                 "Use `set_workspace_path` first.")
+                raise ValueError(
+                    "Workspace path is not set. " "Use `set_workspace_path` first."
+                )
 
             # Validate workspace path
             workspace = self.validate_workspace_path(self.workspace_path)
@@ -92,9 +94,7 @@ class WorkspaceManager:
             # Validate src directory
             self.validate_src_directory(workspace)
 
-            self.logger.info(
-                f"Updating workspace at '{workspace}'"
-            )
+            self.logger.info(f"Updating workspace at '{workspace}'")
 
             # Pull repositories
             self.pull_repositories(workspace)
@@ -107,8 +107,7 @@ class WorkspaceManager:
         try:
             # Validate workspace path
             workspace = self.validate_workspace_path(self.workspace_path)
-            self.logger.debug(
-                f"Validated workspace path for build: {workspace}")
+            self.logger.debug(f"Validated workspace path for build: {workspace}")
 
             # Validate src directory
             self.validate_src_directory(workspace)
@@ -117,13 +116,11 @@ class WorkspaceManager:
             setup_bash_path = workspace / "install" / "setup.bash"
             default_underlay_path_str = self.parse_setup_bash(setup_bash_path)
             default_underlay = (
-                Path(default_underlay_path_str)
-                if default_underlay_path_str else None
+                Path(default_underlay_path_str) if default_underlay_path_str else None
             )
 
             # Find and set up underlays
-            underlays = self.find_ros2_underlays(
-                [Path("/opt/ros"), Path.home()])
+            underlays = self.find_ros2_underlays([Path("/opt/ros"), Path.home()])
 
             # Remove duplicates and ensure all underlays are resolved
             underlays = list(set(underlays))
@@ -148,7 +145,8 @@ class WorkspaceManager:
                         self.logger.warning("Failed to source setup file.")
                 else:
                     self.logger.warning(
-                        f"Setup file not found for underlay: {underlay}")
+                        f"Setup file not found for underlay: {underlay}"
+                    )
 
             # Proceed with build
             self.logger.info("Starting workspace build using colcon...")
@@ -162,20 +160,18 @@ class WorkspaceManager:
             self.logger.error(f"Unexpected error: {e}")
             sys.exit(1)
 
-    def validate_workspace_path(self,
-                              workspace_path: Path,
-                              allow_create: bool = False) -> Path:
+    def validate_workspace_path(
+        self, workspace_path: Path, allow_create: bool = False
+    ) -> Path:
         """Validate that the workspace path is writable."""
         if workspace_path.exists():
             if not os.access(workspace_path, os.W_OK):
-                raise PermissionError(
-                    f"No write permission for {workspace_path}")
+                raise PermissionError(f"No write permission for {workspace_path}")
         elif allow_create:
             # Attempt to create the workspace directory
             try:
                 workspace_path.mkdir(parents=True, exist_ok=True)
-                self.logger.debug(
-                    f"Created workspace directory: {workspace_path}")
+                self.logger.debug(f"Created workspace directory: {workspace_path}")
             except Exception as e:
                 raise PermissionError(
                     f"Cannot create workspace directory: {workspace_path}"
@@ -195,8 +191,7 @@ class WorkspaceManager:
             raise ValueError("No 'repositories' specified in configuration.")
         if not isinstance(config["repositories"], dict):
             raise ValueError(
-                "'repositories' should be a dictionary of "
-                "repository configurations."
+                "'repositories' should be a dictionary of " "repository configurations."
             )
         for repo_name, repo_cfg in config["repositories"].items():
             if not isinstance(repo_cfg, dict):
@@ -209,14 +204,14 @@ class WorkspaceManager:
                 or "version" not in repo_cfg
             ):
                 raise ValueError(
-                    "Each repository must have 'type', 'url' and "
-                    "'version' fields."
+                    "Each repository must have 'type', 'url' and " "'version' fields."
                 )
         self.logger.debug("Workspace configuration validated successfully.")
         return config
 
     def validate_src_directory(
-            self, workspace_path: Path, allow_create: bool = False) -> Path:
+        self, workspace_path: Path, allow_create: bool = False
+    ) -> Path:
         """Validate that the workspace has a 'src' directory."""
         src_dir = workspace_path / "src"
         if not src_dir.exists():
@@ -255,31 +250,28 @@ class WorkspaceManager:
             Optional[Path]: Path to the setup file if found, else None.
         """
         # Get user's current shell
-        shell = os.environ.get('SHELL', '/bin/bash').lower()
+        shell = os.environ.get("SHELL", "/bin/bash").lower()
 
         # Map shells to their setup files
-        setup_files = {
-            'zsh': 'setup.zsh',
-            'bash': 'setup.bash',
-            'sh': 'setup.sh'
-        }
+        setup_files = {"zsh": "setup.zsh", "bash": "setup.bash", "sh": "setup.sh"}
 
         # Extract shell name (e.g., 'bash' from '/bin/bash')
         shell_name = Path(shell).name
         # Default to bash if unknown
-        setup_file_name = setup_files.get(shell_name, 'setup.bash')
+        setup_file_name = setup_files.get(shell_name, "setup.bash")
 
         self.logger.debug(
-            f"Detected shell: {shell_name}, looking for '{setup_file_name}'")
+            f"Detected shell: {shell_name}, looking for '{setup_file_name}'"
+        )
 
         # Possible setup file locations
         possible_paths = [
             # For system installs like /opt/ros/jazzy/setup.bash
             workspace_path / setup_file_name,
             # For colcon workspaces
-            workspace_path / 'install' / setup_file_name,
+            workspace_path / "install" / setup_file_name,
             # For catkin workspaces
-            workspace_path / 'devel' / setup_file_name
+            workspace_path / "devel" / setup_file_name,
         ]
 
         # Try each possible path
@@ -288,8 +280,10 @@ class WorkspaceManager:
                 self.logger.debug(f"Found setup file: {path}")
                 return path
 
-        self.logger.warning(f"No setup file found for shell '{shell_name}' "
-                            f"in workspace '{workspace_path}'.")
+        self.logger.warning(
+            f"No setup file found for shell '{shell_name}' "
+            f"in workspace '{workspace_path}'."
+        )
         return None
 
     def parse_setup_bash(self, setup_bash_path: Path) -> Optional[str]:
@@ -311,7 +305,7 @@ class WorkspaceManager:
         prefixes = []
 
         try:
-            with setup_bash_path.open('r') as file:
+            with setup_bash_path.open("r") as file:
                 for line in file:
                     match = colcon_prefix_pattern.match(line.strip())
                     if match:
@@ -321,26 +315,28 @@ class WorkspaceManager:
                 default_underlay = prefixes[-2]
                 self.logger.debug(
                     f"Inferred default underlay before stripping: "
-                    f"{default_underlay}")
+                    f"{default_underlay}"
+                )
 
                 # Strip '/install' or '/devel' only if present at the end
-                if default_underlay.endswith(('/install', '/devel')):
+                if default_underlay.endswith(("/install", "/devel")):
                     stripped_underlay = Path(default_underlay).parent
                     default_underlay_str = str(stripped_underlay)
                     self.logger.debug(
                         f"Inferred default underlay after stripping: "
-                        f"{default_underlay_str}")
+                        f"{default_underlay_str}"
+                    )
                 else:
                     # Retain the original path if no stripping is needed
                     default_underlay_str = default_underlay
                     self.logger.debug(
                         f"Inferred default underlay without stripping: "
-                        f"{default_underlay_str}")
+                        f"{default_underlay_str}"
+                    )
 
                 return default_underlay_str
             else:
-                self.logger.warning(
-                    "Not enough COLCON_CURRENT_PREFIX entries found.")
+                self.logger.warning("Not enough COLCON_CURRENT_PREFIX entries found.")
                 return None
 
         except Exception as e:
@@ -375,8 +371,7 @@ class WorkspaceManager:
             self.logger.error(f"Failed to pull repositories: {e}")
             sys.exit(1)
 
-    def find_available_workspaces(self,
-                                home_dir: Path = Path.home()) -> List[Path]:
+    def find_available_workspaces(self, home_dir: Path = Path.home()) -> List[Path]:
         """Find available ROS 2 workspaces in the home directory."""
         workspaces = []
         naming_pattern = "*_ws"
@@ -391,15 +386,15 @@ class WorkspaceManager:
 
         self.logger.debug(
             f"Searching for available workspaces in {home_dir} "
-            f"with pattern '{naming_pattern}'")
+            f"with pattern '{naming_pattern}'"
+        )
 
         for dir in home_dir.glob(naming_pattern):
             if dir.is_dir():
                 src_dir = dir / "src"
                 if src_dir.exists() and src_dir.is_dir():
                     workspaces.append(dir)
-                    self.logger.debug(
-                        f"Found workspace with 'src' directory: {dir}")
+                    self.logger.debug(f"Found workspace with 'src' directory: {dir}")
                     continue
                 for setup_file in setup_files:
                     setup_path = dir / setup_file
@@ -421,8 +416,7 @@ class WorkspaceManager:
 
         for search_dir in search_dirs:
             if not search_dir.exists():
-                self.logger.debug(
-                    f"Search directory does not exist: {search_dir}")
+                self.logger.debug(f"Search directory does not exist: {search_dir}")
                 continue
 
             self.logger.debug(f"Searching in directory: {search_dir}")
@@ -444,7 +438,8 @@ class WorkspaceManager:
                                         underlays.append(subdir)
                                         self.logger.debug(
                                             f"Found underlay in "
-                                            f"{install_type}: {subdir}")
+                                            f"{install_type}: {subdir}"
+                                        )
                                         break
                                 else:
                                     continue
@@ -471,13 +466,11 @@ class WorkspaceManager:
                     return selected_workspace
             if allow_create and default_workspace:
                 workspace = Path(default_workspace).expanduser().resolve()
-                self.logger.debug(
-                    f"Assuming default workspace path: {workspace}")
+                self.logger.debug(f"Assuming default workspace path: {workspace}")
                 return workspace
             else:
                 self.logger.error(
-                    "No workspaces available and "
-                    "cannot create a new one by default."
+                    "No workspaces available and " "cannot create a new one by default."
                 )
                 sys.exit(1)
 
@@ -496,28 +489,19 @@ class WorkspaceManager:
             while True:
                 try:
                     if allow_create:
-                        if (
-                            default_workspace
-                            and default_workspace in workspaces
-                        ):
-                            default_option = workspaces.index(
-                                default_workspace
-                            ) + 1
+                        if default_workspace and default_workspace in workspaces:
+                            default_option = workspaces.index(default_workspace) + 1
                             prompt_msg = (
-                                f"Select a workspace "
-                                f"(default: {default_option}): "
+                                f"Select a workspace " f"(default: {default_option}): "
                             )
                         else:
                             default_option = create_option
                             prompt_msg = (
-                                f"Select a workspace "
-                                f"(default: {default_option}): "
+                                f"Select a workspace " f"(default: {default_option}): "
                             )
                     else:
                         default_option = create_option
-                        prompt_msg = (
-                            f"Select a workspace (default: {default_option}): "
-                        )
+                        prompt_msg = f"Select a workspace (default: {default_option}): "
 
                     choice = input(prompt_msg).strip()
                 except EOFError:
@@ -538,8 +522,7 @@ class WorkspaceManager:
                 if allow_available and 1 <= choice_num <= len(workspaces):
                     selected_workspace = workspaces[choice_num - 1]
                     self.logger.debug(
-                        f"User selected existing workspace: "
-                        f"{selected_workspace}"
+                        f"User selected existing workspace: " f"{selected_workspace}"
                     )
                     return selected_workspace
                 elif allow_create and choice_num == create_option:
@@ -552,23 +535,18 @@ class WorkspaceManager:
                     workspace = Path(workspace_input).expanduser().resolve()
                     if not workspace.exists():
                         try:
-                            self.validate_workspace_path(
-                                workspace, allow_create=True)
-                            self.validate_src_directory(
-                                workspace, allow_create=True)
+                            self.validate_workspace_path(workspace, allow_create=True)
+                            self.validate_src_directory(workspace, allow_create=True)
                             workspace.mkdir(parents=True, exist_ok=True)
-                            self.logger.debug(
-                                f"Created new workspace: {workspace}")
+                            self.logger.debug(f"Created new workspace: {workspace}")
                         except Exception as e:
                             self.logger.error(f"Invalid workspace path: {e}")
                             print(f"Invalid workspace: {e}")
                             continue
                     else:
                         try:
-                            self.validate_workspace_path(
-                                workspace, allow_create=True)
-                            self.validate_src_directory(
-                                workspace, allow_create=True)
+                            self.validate_workspace_path(workspace, allow_create=True)
+                            self.validate_src_directory(workspace, allow_create=True)
                             self.logger.debug(
                                 f"Selected existing workspace: {workspace}"
                             )
@@ -584,8 +562,7 @@ class WorkspaceManager:
                 ):
                     selected_workspace = workspaces[choice_num - 1]
                     self.logger.debug(
-                        f"User selected existing workspace: "
-                        f"{selected_workspace}"
+                        f"User selected existing workspace: " f"{selected_workspace}"
                     )
                     return selected_workspace
                 elif not allow_create and choice_num == custom_option:
@@ -599,9 +576,7 @@ class WorkspaceManager:
                     try:
                         self.validate_workspace_path(workspace)
                         self.validate_src_directory(workspace)
-                        self.logger.debug(
-                            f"Selected existing workspace: {workspace}"
-                        )
+                        self.logger.debug(f"Selected existing workspace: {workspace}")
                     except Exception as e:
                         self.logger.error(f"Invalid workspace: {e}")
                         print(f"Invalid workspace: {e}")
@@ -635,8 +610,7 @@ class WorkspaceManager:
                 try:
                     self.validate_workspace_path(workspace)
                     self.validate_src_directory(workspace)
-                    self.logger.debug(
-                        f"Selected existing workspace: {workspace}")
+                    self.logger.debug(f"Selected existing workspace: {workspace}")
                 except Exception as e:
                     self.logger.error(f"Invalid workspace: {e}")
                     print(f"Invalid workspace: {e}")
@@ -656,21 +630,19 @@ class WorkspaceManager:
         if self.assume_yes:
             if default_underlay:
                 self.logger.debug(
-                    f"Assuming provided default underlay: {default_underlay}")
+                    f"Assuming provided default underlay: {default_underlay}"
+                )
                 return default_underlay
             elif underlays:
                 selected_underlay = underlays[0]
-                self.logger.debug(
-                    f"Assuming default underlay: {selected_underlay}")
+                self.logger.debug(f"Assuming default underlay: {selected_underlay}")
                 return selected_underlay
             else:
-                self.logger.warning(
-                    "No underlays available to select by default.")
+                self.logger.warning("No underlays available to select by default.")
                 return None
 
         if not underlays:
-            self.logger.warning(
-                "No underlays found. Proceeding without underlays.")
+            self.logger.warning("No underlays found. Proceeding without underlays.")
             return None
 
         print("\nAvailable underlays:")
@@ -718,20 +690,17 @@ class WorkspaceManager:
 
             if 1 <= choice_num <= len(underlays):
                 selected_underlay = underlays[choice_num - 1]
-                self.logger.debug(
-                    f"User selected underlay: {selected_underlay}")
+                self.logger.debug(f"User selected underlay: {selected_underlay}")
                 return selected_underlay
             elif choice_num == custom_option_number:
-                custom_path = input(
-                    "Enter the path to the custom underlay: ").strip()
+                custom_path = input("Enter the path to the custom underlay: ").strip()
                 if not custom_path:
                     print("Please enter a valid existing path.")
                     continue
                 custom_underlay = Path(custom_path).expanduser().resolve()
                 if not custom_underlay.exists():
                     self.logger.error(
-                        f"Provided underlay path does not exist: "
-                        f"{custom_underlay}"
+                        f"Provided underlay path does not exist: " f"{custom_underlay}"
                     )
                     print(
                         "Provided underlay path does not exist. "
@@ -744,11 +713,11 @@ class WorkspaceManager:
                         f"No setup file found in the custom underlay: "
                         f"{custom_underlay}"
                     )
-                    print("No valid setup file found in "
-                          "the provided underlay path.")
+                    print("No valid setup file found in " "the provided underlay path.")
                     continue
-                self.logger.debug(f"User entered custom underlay: "
-                                  f"{custom_underlay}")
+                self.logger.debug(
+                    f"User entered custom underlay: " f"{custom_underlay}"
+                )
                 return custom_underlay
             else:
                 print("Invalid selection. Please choose a valid number.")
