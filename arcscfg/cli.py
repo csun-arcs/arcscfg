@@ -2,9 +2,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from arcscfg.commands.build import BuildCommand
 from arcscfg.commands.install import InstallCommand
+from arcscfg.commands.config import ConfigCommand
 from arcscfg.commands.setup import SetupCommand
+from arcscfg.commands.build import BuildCommand
 from arcscfg.commands.update import UpdateCommand
 from arcscfg.utils.logger import Logger
 
@@ -13,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description="ARCS Environment Configurator")
     parser.add_argument(
         "command",
-        choices=["install", "setup", "build", "update"],
+        choices=["install", "config", "setup", "build", "update"],
         help="Command to execute",
     )
     parser.add_argument("-w", "--workspace", help="ROS 2 workspace path.")
@@ -124,8 +125,9 @@ def main():
 
     # Map command names to classes
     command_classes = {
-        "setup": SetupCommand,
         "install": InstallCommand,
+        "config": ConfigCommand,
+        "setup": SetupCommand,
         "build": BuildCommand,
         "update": UpdateCommand,
     }

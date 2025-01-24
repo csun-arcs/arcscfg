@@ -1,0 +1,6 @@
+#!/bin/bash
+# Pre-push hook added by arcscfg
+
+echo "Running pre-push checks..."
+
+# Placeholder for additional checks before pushing
