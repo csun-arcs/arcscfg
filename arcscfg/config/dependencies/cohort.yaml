@@ -50,6 +50,12 @@ apt:
   - python3-pyqt5
 
   # ------------------------------
+  # Terminals
+  # ------------------------------
+  - terminator
+  - tmux
+
+  # ------------------------------
   # Linters and Code Formatters
   # ------------------------------
   - clang-format
