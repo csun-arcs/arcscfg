@@ -1,12 +1,30 @@
-# arcscfg/arcscfg/config/workspaces/project1.yaml
-#
-# Temporary CoHORT workspace config test file
+# CoHORT Workspace Configuration
 repositories:
-  test-package-1:
+  arcs_cohort_msgs:
     type: git
-    url: git@gitlab.com:csun-arcs/cohort/test-package-1.git
+    url: git@github.com:csun-arcs/arcs_cohort_msgs.git
     version: main
-  test-package-2:
+  arcs_cohort_bringup:
     type: git
-    url: git@gitlab.com:csun-arcs/cohort/test-package-2.git
+    url: git@github.com:csun-arcs/arcs_cohort_bringup.git
+    version: main
+  arcs_cohort_description:
+    type: git
+    url: git@github.com:csun-arcs/arcs_cohort_description.git
+    version: main
+  arcs_cohort_simulation:
+    type: git
+    url: git@github.com:csun-arcs/arcs_cohort_simulation.git
+    version: main
+  arcs_cohort_perception:
+    type: git
+    url: git@github.com:csun-arcs/arcs_cohort_perception.git
+    version: main
+  arcs_cohort_control:
+    type: git
+    url: git@github.com:csun-arcs/arcs_cohort_control.git
+    version: main
+  arcs_cohort_navigation:
+    type: git
+    url: git@github.com:csun-arcs/arcs_cohort_navigation.git
     version: main
