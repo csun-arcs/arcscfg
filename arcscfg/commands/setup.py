@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -120,9 +121,11 @@ class SetupCommand(BaseCommand):
 
         print("\nAvailable workspace configs:")
         for i, workspace_config in enumerate(workspace_configs, start=1):
-            print(f"{i}: {workspace_config.name}")
+            print(
+                f"{i}: {os.path.splitext(workspace_config.name)[0]} (config file path: '{workspace_config}')"
+            )
 
-        print(f"{len(workspace_configs)+1}: Enter a custom workspace config path")
+        print(f"{len(workspace_configs)+1}: Enter a custom workspace config file path")
 
         while True:
             try:
