@@ -40,10 +40,10 @@ class Shell:
 
         # Update environment variables
         for line in result.stdout.splitlines():
-            if "=" not in line:
+            if "=".encode("utf-8") not in line:
                 continue
-            key, value = line.strip().split("=", 1)
-            os.environ[key] = value
+            key, value = line.strip().split("=".encode("utf-8"), 1)
+            os.environ[key.decode()] = value.decode()
 
         logger.debug(f"Successfully sourced file: {setup_file}")
         return True
