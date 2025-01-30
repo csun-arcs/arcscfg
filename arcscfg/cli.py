@@ -2,6 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
+# Import command classes
 from arcscfg.commands.build import BuildCommand
 from arcscfg.commands.config import ConfigCommand
 from arcscfg.commands.install import InstallCommand
@@ -11,57 +12,75 @@ from arcscfg.utils.logger import Logger
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ARCS Environment Configurator")
-    parser.add_argument(
-        "command",
-        choices=["install", "config", "setup", "build", "update"],
-        help="Command to execute",
+    # Create the top-level parser
+    parser = argparse.ArgumentParser(
+        description="CSUN ARCS Configurator",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("-w", "--workspace", help="ROS 2 workspace path.")
+
+    # Global arguments
     parser.add_argument(
-        "-wc",
-        "--workspace-config",
+        "-v",
+        "--verbosity",
+        choices=["debug", "info", "warning", "error", "critical", "silent"],
+        default="info",
+        help="Set the logging verbosity level.",
+    )
+    parser.add_argument(
+        "-lfp",
+        "--log-file-path",
+        default=None,
         help=(
-            "Workspace config. Select from available configs or "
-            "provide workspace config path."
+            "Path to log file/directory. If None, system default location is "
+            "selected."
         ),
     )
     parser.add_argument(
-        "-df",
-        "--dependency-file",
-        help=(
-            "Dependency config file. Select from available configs or "
-            "provide dependency config path."
-        ),
+        "-lms",
+        "--log-max-size",
+        type=int,
+        default=5 * 1024 * 1024,  # 5 MB
+        help="Maximum log file size (in bytes) before rotation.",
     )
     parser.add_argument(
-        "-pdf",
-        "--package-dependency-files",
-        nargs="*",
-        default=["dependencies.repos", "dependencies.rosinstall"],
-        help=(
-            "Dependency file names to search for within packages. "
-            "Default: ['dependencies.repos', 'dependencies.rosinstall']"
-        ),
+        "-lbc",
+        "--log-backup-count",
+        type=int,
+        default=5,
+        help="Number of backup log files to keep.",
     )
     parser.add_argument(
-        "-r",
-        "--recursive-search",
+        "-y",
+        "--yes",
+        "--assume-yes",
         action="store_true",
-        help="Enable recursive search for dependency files within all subdirectories of the workspace.",
+        help="Assume yes to all prompts and use default options.",
     )
-    parser.add_argument(
-        "-pim",
-        "--pip-install-method",
-        choices=["user", "pipx", "venv"],
-        default="pipx",
-        help=(
-            "Method to install pip packages: 'user' installs with '--user', "
-            "'pipx' uses pipx, 'venv' uses a virtual environment. "
-            "Default is 'pipx'."
-        ),
+
+    # Create subparsers for commands
+    subparsers = parser.add_subparsers(
+        title="Commands",
+        dest="command",
+        description="Available commands",
+        help="Additional help",
     )
-    parser.add_argument(
+    subparsers.required = True  # Ensure that a command is provided
+
+    ### 1. Install Command ###
+    install_parser = subparsers.add_parser(
+        "install",
+        description="Install ROS 2, dependencies, etc.",
+        help="Install ROS2, dependencies, etc.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    # Command-specific arguments
+    install_parser.add_argument(
+        "-ir",
+        "--install-ros2",
+        action="store_true",
+        help="Automate the installation of ROS 2.",
+    )
+    install_parser.add_argument(
         "-rd",
         "--ros-distro",
         choices=[
@@ -78,58 +97,115 @@ def main():
             "rolling",
         ],
         default="jazzy",
+        help="ROS 2 distribution to install (e.g., 'iron', 'jazzy').",
+    )
+    install_parser.add_argument(
+        "-df",
+        "--dependency-file",
         help=(
-            "ROS 2 distribution to install (e.g., 'iron', 'jazzy', 'rolling'). "
-            "Default: 'jazzy'."
+            "Dependency config file. Select from available configs or "
+            "provide dependency config path."
         ),
     )
-    parser.add_argument(
-        "-ir",
-        "--install-ros2",
-        action="store_true",
-        help="Automate the installation of ROS 2.",
-    )
-    parser.add_argument(
-        "-v",
-        "--verbosity",
-        choices=["debug", "info", "warning", "error", "critical", "silent"],
-        default="info",
-        help="Set the logging verbosity level. Default: info.",
-    )
-    parser.add_argument(
-        "-lfp",
-        "--log-file-path",
-        default=None,
+    install_parser.add_argument(
+        "-pim",
+        "--pip-install-method",
+        choices=["user", "pipx", "venv"],
+        default="pipx",
         help=(
-            "Path to log file/directory. If None, system default location is "
-            "selected. Default: None."
+            "Method to install pip packages: 'user' installs with '--user', "
+            "'pipx' uses pipx, 'venv' uses a virtual environment."
         ),
     )
-    parser.add_argument(
-        "-lms",
-        "--log-max-size",
-        type=int,
-        default=5 * 1024 * 1024,  # 5 MB
-        help="Maximum log file size in bytes before rotation. Default is 5MB.",
-    )
-    parser.add_argument(
-        "-lbc",
-        "--log-backup-count",
-        type=int,
-        default=5,
-        help="Number of backup log files to keep. Default is 5.",
-    )
-    parser.add_argument(
-        "-y",
-        "--yes",
-        "--assume-yes",
-        action="store_true",
-        help="Assume yes to all prompts and use default options.",
-    )
+    install_parser.set_defaults(func=InstallCommand)
 
+    ### 2. Config Command ###
+    config_parser = subparsers.add_parser(
+        "config",
+        description="Configure dotfiles, git hooks, etc.",
+        help="Configure dotfiles, git hooks, etc.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    # Command-specific arguments
+    config_parser.add_argument(
+        "-w",
+        "--workspace",
+        help="ROS 2 workspace path.",
+    )
+    config_parser.set_defaults(func=ConfigCommand)
+
+    ### 3. Setup Command ###
+    setup_parser = subparsers.add_parser(
+        "setup",
+        description="Set up ROS 2 workspaces using workspace configuration files.",
+        help="Set up ROS 2 workspaces using workspace configuration files.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    # Command-specific arguments
+    setup_parser.add_argument(
+        "-wc",
+        "--workspace-config",
+        help=(
+            "Workspace config. Select from available configs or "
+            "provide workspace config path."
+        ),
+    )
+    setup_parser.add_argument(
+        "-w",
+        "--workspace",
+        help="ROS 2 workspace path.",
+    )
+    setup_parser.add_argument(
+        "-pdf",
+        "--package-dependency-files",
+        nargs="*",
+        default=["dependencies.repos", "dependencies.rosinstall"],
+        help=(
+            "Dependency file names to search for within packages."
+        ),
+    )
+    setup_parser.add_argument(
+        "-r",
+        "--recursive-search",
+        action="store_true",
+        help="Enable recursive search for dependency files within all subdirectories of the workspace.",
+    )
+    setup_parser.set_defaults(func=SetupCommand)
+
+    ### 4. Build Command ###
+    build_parser = subparsers.add_parser(
+        "build",
+        description="Build ROS 2 workspaces.",
+        help="Build ROS 2 workspaces.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    # Command-specific arguments
+    build_parser.add_argument(
+        "-w",
+        "--workspace",
+        help="ROS 2 workspace path.",
+    )
+    build_parser.set_defaults(func=BuildCommand)
+
+    ### 5. Update Command ###
+    update_parser = subparsers.add_parser(
+        "update",
+        description="Update ROS 2 workspace repositories.",
+        help="Update ROS 2 workspace repositories.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    # Command-specific arguments
+    update_parser.add_argument(
+        "-w",
+        "--workspace",
+        help="ROS 2 workspace path.",
+    )
+    update_parser.set_defaults(func=UpdateCommand)
+
+    # Parse the arguments
     args = parser.parse_args()
 
-    # Set up logging
+    # Initialize Logger with global arguments
     logger = Logger(
         verbosity=args.verbosity,
         log_file_path=Path(args.log_file_path) if args.log_file_path else None,
@@ -139,23 +215,18 @@ def main():
 
     logger.info("Starting arcscfg tool")
 
-    # Map command names to classes
-    command_classes = {
-        "install": InstallCommand,
-        "config": ConfigCommand,
-        "setup": SetupCommand,
-        "build": BuildCommand,
-        "update": UpdateCommand,
-    }
-
-    command_class = command_classes.get(args.command)
-    if not command_class:
-        logger.error(f"Unknown command: {args.command}")
+    # Instantiate and execute the selected command
+    try:
+        command_class = args.func
+        command_instance = command_class(args, logger)
+        command_instance.execute()
+    except AttributeError:
+        # This should not happen as subparsers are required
+        parser.print_help()
         sys.exit(1)
-
-    # Instantiate and execute the command
-    command = command_class(args, logger)
-    command.execute()
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        sys.exit(1)
 
     logger.info("arcscfg tool finished execution.")
 
