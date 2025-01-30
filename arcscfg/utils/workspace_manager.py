@@ -1,5 +1,4 @@
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -18,6 +17,8 @@ class WorkspaceManager:
         workspace_config: Optional[str] = None,
         assume_yes: bool = False,
         logger: Optional[Logger] = None,
+        dependency_file_names: Optional[List[str]] = None,
+        recursive_search: bool = False,
     ):
         self.logger = logger or Logger()
         self.assume_yes = assume_yes
@@ -29,32 +30,62 @@ class WorkspaceManager:
             Path(workspace_config).expanduser().resolve() if workspace_config else None
         )
 
-    def set_workspace_path(self, workspace_path: Path):
-        """
-        Set and validate the workspace path.
-
-        Args:
-            workspace_path (Path): The new workspace path to set.
-
-        Raises:
-            PermissionError: If the workspace path is not writable.
-            ValueError: If the workspace path is invalid.
-        """
-        self.logger.debug(f"Setting workspace path to: {workspace_path}")
-        validated_workspace = self.validate_workspace_path(
-            workspace_path, allow_create=True
+        # Initialize dependency file names
+        self.dependency_file_names = (
+            dependency_file_names
+            if dependency_file_names
+            else ["dependencies.repos", "dependencies.rosinstall"]
         )
-        self.workspace_path = validated_workspace
-        self.logger.debug(f"Workspace path set to: {self.workspace_path}")
+        self.recursive_search = recursive_search
+
+    def discover_dependency_files(self) -> List[Path]:
+        """Discover all dependency files within each cloned repository in the workspace."""
+        if not self.workspace_path:
+            self.logger.error("Workspace path is not set.")
+            raise ValueError("Workspace path is not set.")
+
+        src_dir = self.workspace_path / "src"
+        if not src_dir.exists():
+            self.logger.error(
+                f"'src' directory does not exist in workspace: {self.workspace_path}"
+            )
+            raise ValueError(
+                f"'src' directory does not exist in workspace: {self.workspace_path}"
+            )
+
+        dependency_files = []
+        # Iterate through each package in src
+        for package in src_dir.iterdir():
+            if package.is_dir():
+                for file_name in self.dependency_file_names:
+                    if self.recursive_search:
+                        found = list(package.rglob(file_name))
+                    else:
+                        found = (
+                            [package / file_name]
+                            if (package / file_name).is_file()
+                            else []
+                        )
+                        found = [p for p in found if p.is_file()]
+
+                    dependency_files.extend(found)
+                    self.logger.debug(
+                        f"Found {len(found)} '{file_name}' files in '{package}'."
+                    )
+
+        # Remove duplicates
+        dependency_files = list(set(dependency_files))
+        self.logger.info(f"Total dependency files discovered: {len(dependency_files)}")
+        for dep_file in dependency_files:
+            self.logger.debug(f"Discovered dependency file: {dep_file}")
+
+        return dependency_files
 
     def setup_workspace(self):
-        """Set up the workspace by cloning repositories according to the
-        workspace_config."""
+        """Set up the workspace by cloning repositories according to the workspace_config and dependency files."""
         try:
             if not self.workspace_path:
-                raise ValueError(
-                    "Workspace path is not set. " "Use `set_workspace_path` first."
-                )
+                raise ValueError("Workspace path is not set.")
 
             # Validate workspace path
             workspace = self.validate_workspace_path(
@@ -62,20 +93,41 @@ class WorkspaceManager:
             )
 
             # Load and validate workspace configuration
-            with open(self.workspace_config, "r") as f:
-                config = yaml.safe_load(f)
+            if not self.workspace_config:
+                raise ValueError("Workspace configuration is not set.")
+            with self.workspace_config.open("r") as f:
+                try:
+                    config = yaml.safe_load(f)
+                    self.logger.debug(
+                        f"Loaded workspace config from {self.workspace_config}"
+                    )
+                except yaml.YAMLError as e:
+                    self.logger.error(
+                        f"YAML parsing error in {self.workspace_config}: {e}"
+                    )
+                    raise
+
             self.validate_workspace_config(config)
 
             # Validate/create src directory
             self.validate_src_directory(workspace, allow_create=True)
 
             self.logger.info(
-                f"Setting up workspace at '{workspace}' "
-                f"using config '{self.workspace_config}'"
+                f"Setting up workspace at '{workspace}' using config '{self.workspace_config}'"
             )
 
-            # Clone repositories
+            # Clone main workspace repositories
             self.clone_repositories(workspace, self.workspace_config)
+
+            # Discover additional dependency files
+            dependency_files = self.discover_dependency_files()
+
+            # Clone repositories from each dependency file
+            for dep_file in dependency_files:
+                self.clone_repositories(workspace, dep_file)
+
+            self.logger.info("Workspace setup completed successfully.")
+
         except Exception as e:
             self.logger.error(f"Error setting up workspace: {e}")
             sys.exit(1)
@@ -84,9 +136,7 @@ class WorkspaceManager:
         """Update workspace by pulling repositories therein."""
         try:
             if not self.workspace_path:
-                raise ValueError(
-                    "Workspace path is not set. " "Use `set_workspace_path` first."
-                )
+                raise ValueError("Workspace path is not set.")
 
             # Validate workspace path
             workspace = self.validate_workspace_path(self.workspace_path)
@@ -191,7 +241,7 @@ class WorkspaceManager:
             raise ValueError("No 'repositories' specified in configuration.")
         if not isinstance(config["repositories"], dict):
             raise ValueError(
-                "'repositories' should be a dictionary of " "repository configurations."
+                "'repositories' should be a dictionary of repository configurations."
             )
         for repo_name, repo_cfg in config["repositories"].items():
             if not isinstance(repo_cfg, dict):
@@ -204,7 +254,7 @@ class WorkspaceManager:
                 or "version" not in repo_cfg
             ):
                 raise ValueError(
-                    "Each repository must have 'type', 'url' and " "'version' fields."
+                    "Each repository must have 'type', 'url' and 'version' fields."
                 )
         self.logger.debug("Workspace configuration validated successfully.")
         return config
@@ -343,19 +393,22 @@ class WorkspaceManager:
             self.logger.error(f"Error parsing setup.bash: {e}")
             return None
 
-    def clone_repositories(self, workspace: Path, workspace_config: Path):
-        """Clone repos defined in the workspace config file to the ROS 2
-        workspace."""
+    def clone_repositories(self, workspace: Path, repos_file: Path):
+        """Clone repos defined in the repositories config file to the ROS 2 workspace."""
         try:
-            self.logger.info("Cloning repositories...")
+            self.logger.info(f"Cloning repositories from '{repos_file.name}'...")
             Shell.run_command(
-                ["vcs", "import", "--input", str(workspace_config), "src"],
+                ["vcs", "import", "--input", str(repos_file), "src"],
                 cwd=str(workspace),
                 verbose=True,
             )
-            self.logger.info("Repositories cloned successfully.")
+            self.logger.info(
+                f"Repositories cloned successfully from '{repos_file.name}'."
+            )
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to clone repositories: {e}")
+            self.logger.error(
+                f"Failed to clone repositories from '{repos_file.name}': {e}"
+            )
             sys.exit(1)
 
     def pull_repositories(self, workspace: Path):

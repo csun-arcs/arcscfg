@@ -2,10 +2,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from arcscfg.commands.install import InstallCommand
-from arcscfg.commands.config import ConfigCommand
-from arcscfg.commands.setup import SetupCommand
 from arcscfg.commands.build import BuildCommand
+from arcscfg.commands.config import ConfigCommand
+from arcscfg.commands.install import InstallCommand
+from arcscfg.commands.setup import SetupCommand
 from arcscfg.commands.update import UpdateCommand
 from arcscfg.utils.logger import Logger
 
@@ -33,6 +33,22 @@ def main():
             "Dependency config file. Select from available configs or "
             "provide dependency config path."
         ),
+    )
+    parser.add_argument(
+        "-pdf",
+        "--package-dependency-files",
+        nargs="*",
+        default=["dependencies.repos", "dependencies.rosinstall"],
+        help=(
+            "Dependency file names to search for within packages. "
+            "Default: ['dependencies.repos', 'dependencies.rosinstall']"
+        ),
+    )
+    parser.add_argument(
+        "-r",
+        "--recursive-search",
+        action="store_true",
+        help="Enable recursive search for dependency files within all subdirectories of the workspace.",
     )
     parser.add_argument(
         "-pim",

@@ -1,3 +1,4 @@
+import subprocess
 import sys
 from pathlib import Path
 
@@ -24,6 +25,8 @@ class SetupCommand(BaseCommand):
             workspace_config=str(workspace_config),
             assume_yes=self.args.yes,
             logger=self.logger,
+            dependency_file_names=self.args.package_dependency_files,
+            recursive_search=self.args.recursive_search,
         )
 
         workspace_path = self._get_or_prompt_workspace(manager)
@@ -31,7 +34,7 @@ class SetupCommand(BaseCommand):
             self.logger.error("Workspace path could not be determined.")
             sys.exit(1)
 
-        manager.set_workspace_path(workspace_path)
+        manager.workspace_path = workspace_path
         manager.setup_workspace()
 
         self.logger.info("Workspace setup completed successfully.")
@@ -46,8 +49,7 @@ class SetupCommand(BaseCommand):
                 # Attempt absolute path
                 workspace_config = Path(self.args.workspace_config).resolve()
                 self.logger.debug(
-                    f"Attempting to resolve absolute workspace config path: "
-                    f"{workspace_config}"
+                    f"Attempting to resolve absolute workspace config path: {workspace_config}"
                 )
                 if not workspace_config.is_file():
                     raise ValueError
@@ -60,8 +62,7 @@ class SetupCommand(BaseCommand):
                         / self.args.workspace_config
                     )
                     self.logger.debug(
-                        f"Attempting to resolve relative workspace config: "
-                        f"{workspace_config}"
+                        f"Attempting to resolve relative workspace config: {workspace_config}"
                     )
                     if not workspace_config.is_file():
                         raise ValueError
@@ -74,8 +75,7 @@ class SetupCommand(BaseCommand):
                             / f"{self.args.workspace_config}.yaml"
                         )
                         self.logger.debug(
-                            f"Attempting to resolve workspace config path "
-                            f"with .yaml extension: {workspace_config}"
+                            f"Attempting to resolve workspace config path with .yaml extension: {workspace_config}"
                         )
                         if not workspace_config.is_file():
                             raise ValueError
@@ -84,8 +84,7 @@ class SetupCommand(BaseCommand):
                         self.logger.error(
                             "Unable to resolve workspace config argument!"
                         )
-                        # Reset "assume yes to defaults" to ensure user is
-                        # prompted for workspace config
+                        # Reset "assume yes to defaults" to ensure user is prompted for workspace config
                         self.args.yes = False
         if not workspace_config:
             workspace_configs = self._get_available_workspace_configs()
@@ -104,8 +103,7 @@ class SetupCommand(BaseCommand):
 
     def _prompt_for_workspace_config(self, workspace_configs: list) -> Path:
         """
-        Prompt the user to select a workspace configuration from the available
-        options.
+        Prompt the user to select a workspace configuration from the available options.
         """
         if self.args.yes:
             selected_config = workspace_configs[0] if workspace_configs else None
@@ -116,7 +114,7 @@ class SetupCommand(BaseCommand):
                 return selected_config
             else:
                 self.logger.error(
-                    "No workspace configurations available to select " "by default."
+                    "No workspace configurations available to select by default."
                 )
                 sys.exit(1)
 
@@ -139,8 +137,7 @@ class SetupCommand(BaseCommand):
                     choice_num = int(choice)
                 except ValueError:
                     print(
-                        "Invalid input. Please enter a number "
-                        "corresponding to the options."
+                        "Invalid input. Please enter a number corresponding to the options."
                     )
                     continue
 
@@ -156,13 +153,12 @@ class SetupCommand(BaseCommand):
                 custom_config_path = Path(custom_config).expanduser().resolve()
                 if not custom_config_path.is_file():
                     self.logger.error(
-                        f"Custom workspace config does not exist: "
-                        f"{custom_config_path}"
+                        f"Custom workspace config does not exist: {custom_config_path}"
                     )
                     print("Please enter a valid existing file path.")
                     continue
                 self.logger.debug(
-                    f"User entered custom workspace config: " f"{custom_config_path}"
+                    f"User entered custom workspace config: {custom_config_path}"
                 )
                 return custom_config_path
             else:
