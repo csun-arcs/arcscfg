@@ -31,13 +31,14 @@ class DotfileManager:
         """
         backup_dir = filepath.parent / "arcscfg_backups"
         backup_dir.mkdir(exist_ok=True)
-        backup_path = backup_dir / (filepath.name + ".backup")
+        backup_path = backup_dir / (filepath.name + ".bak")
         shutil.copy(filepath, backup_path)
         self.logger.info(f"Backed up {filepath} to {backup_path}")
 
     def install_dotfiles(self):
         """
-        Install or update the dotfiles.
+        Install or update all dotfiles, delegating specific configurations
+        to helper methods as necessary.
         """
         self.logger.info("Installing dotfiles...")
         for dotfile in self.dotfiles:
@@ -46,33 +47,27 @@ class DotfileManager:
 
             # Prompt the user
             if not self.assume_yes:
-                proceed = input(f"Do you want to update {dst}? (y/N): ").strip().lower()
+                proceed = input(f"Update {dst}? (y/N): ").strip().lower()
                 if proceed != "y":
-                    self.logger.info(f"Skipping {dst} as per user request.")
+                    self.logger.debug(f"Skipping {dst} as per user request.")
                     continue
 
             if dotfile in [".bashrc", ".zshrc"]:
                 self.handle_shell_dotfile(dotfile, src, dst)
+            elif dotfile in [".vimrc", ".emacs"]:
+                self.handle_editor_dotfile(src, dst)
+            elif dotfile == ".tmux.conf":
+                self.handle_tmux_config(src, dst)
             else:
-                if dst.exists():
-                    self.logger.info(f"Dotfile {dst} exists.")
-                    self.backup_dotfile(dst)
-                    self.modify_dotfile(src, dst)
-                else:
-                    # Copy the dotfile
-                    shutil.copy(src, dst)
-                    self.logger.info(f"Installed new dotfile {dst}")
+                self.handle_generic_dotfile(src, dst)
 
     def handle_shell_dotfile(self, dotfile_name: str, src: Path, dst: Path):
         """
         Handle .bashrc and .zshrc files by adding include lines to snippets.
         """
         snippets_dir = self.dotfiles_dir / dotfile_name.lstrip(".")
-
-        # Determine the absolute path to the main snippet file
         main_snippet = snippets_dir / "main.sh"
         main_snippet_path = main_snippet.resolve()
-
         include_line = f"source {main_snippet_path}\n"
 
         if dst.exists():
@@ -98,6 +93,34 @@ class DotfileManager:
                 file.write("# Created by arcscfg\n")
                 file.write(include_line)
             self.logger.info(f"Installed new shell dotfile {dst}")
+
+    def handle_editor_dotfile(self, src: Path, dst: Path):
+        """
+        Handle editor configuration files like .vimrc and .emacs.
+        """
+        self.logger.info(f"Configuring editor dotfile {dst}")
+        self.modify_dotfile(src, dst)
+
+    def handle_tmux_config(self, src: Path, dst: Path):
+        """
+        Handle tmux configuration file.
+        """
+        self.logger.info(f"Configuring TMUX config {dst}")
+        self.modify_dotfile(src, dst)
+
+    def handle_generic_dotfile(self, src: Path, dst: Path):
+        """
+        Handle generic dotfiles not requiring special processing.
+        """
+        if dst.exists():
+            self.logger.info(f"Dotfile {dst} exists.")
+            self.backup_dotfile(dst)
+            shutil.copy(src, dst)
+            self.logger.info(f"Updated {dst}")
+        else:
+            # Copy the dotfile
+            shutil.copy(src, dst)
+            self.logger.info(f"Installed new dotfile {dst}")
 
     def modify_dotfile(self, src: Path, dst: Path):
         """
@@ -141,13 +164,13 @@ class DotfileManager:
         if not self.assume_yes:
             proceed = (
                 input(
-                    f"Do you want to update {shell_rc_file} to source the workspace setup script? (y/N): "
+                    f"Update {shell_rc_file} to source the workspace setup script? (y/N): "
                 )
                 .strip()
                 .lower()
             )
             if proceed != "y":
-                self.logger.info(
+                self.logger.debug(
                     f"Skipping update of {shell_rc_file} as per user request."
                 )
                 return
@@ -171,6 +194,21 @@ class DotfileManager:
         git_hooks = list(self.githooks_dir.glob("*"))
         src_dir = workspace_path / "src"
 
+        # Prompt the user
+        if not self.assume_yes:
+            proceed = (
+                input(
+                    f"Install git hooks in '{workspace_path}' workspace repositories (y/N): "
+                )
+                .strip()
+                .lower()
+            )
+            if proceed != "y":
+                self.logger.debug(
+                    f"Skipping workspace repository git hook installation as per user request."
+                )
+                return
+
         for repo_dir in src_dir.iterdir():
             git_dir = repo_dir / ".git"
             hooks_dir = git_dir / "hooks"
@@ -183,84 +221,19 @@ class DotfileManager:
             else:
                 self.logger.warning(f"No git repository found at {repo_dir}")
 
-    def install_editor_configs(self):
+    def run_all(self, workspace_path: Optional[Path]):
         """
-        Install or update editor configuration files.
+        Run all the dotfile installation steps in a streamlined manner.
+        Handles all types of dotfiles without redundancy.
         """
-        # Similar prompting logic can be added here if desired
+        install_dotfiles = input("Install dotfiles? (y/N): ").strip().lower()
+        if install_dotfiles == "y":
+            self.install_dotfiles()
 
-        # Handle VSCode settings
-        vscode_settings_src = self.dotfiles_dir / "vscode" / "settings.json"
-        vscode_settings_dst = (
-            Path.home() / ".config" / "Code" / "User" / "settings.json"
-        )
-        self.install_editor_config(vscode_settings_src, vscode_settings_dst)
-
-        # Handle Vim configuration
-        vimrc_src = self.dotfiles_dir / "vimrc"
-        vimrc_dst = Path.home() / ".vimrc"
-        self.install_editor_config(vimrc_src, vimrc_dst)
-
-        # Handle Emacs configuration
-        emacs_src = self.dotfiles_dir / "emacs"
-        emacs_dst = Path.home() / ".emacs"
-        self.install_editor_config(emacs_src, emacs_dst)
-
-    def install_editor_config(self, src: Path, dst: Path):
-        """
-        Install or update a single editor configuration file.
-        """
-        # Prompt the user
-        if not self.assume_yes:
-            proceed = input(f"Do you want to update {dst}? (y/N): ").strip().lower()
-            if proceed != "y":
-                self.logger.info(f"Skipping {dst} as per user request.")
-                return
-
-        if dst.exists():
-            self.logger.info(f"Editor config {dst} exists.")
-            self.backup_dotfile(dst)
-            self.modify_dotfile(src, dst)
-        else:
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(src, dst)
-            self.logger.info(f"Installed new editor config {dst}")
-
-    def install_tmux_config(self):
-        """
-        Install or update the tmux configuration file.
-        """
-        tmux_conf_src = self.dotfiles_dir / "tmux.conf"
-        tmux_conf_dst = Path.home() / ".tmux.conf"
-
-        # Prompt the user
-        if not self.assume_yes:
-            proceed = (
-                input(f"Do you want to update {tmux_conf_dst}? (y/N): ").strip().lower()
-            )
-            if proceed != "y":
-                self.logger.info(f"Skipping {tmux_conf_dst} as per user request.")
-                return
-
-        if tmux_conf_dst.exists():
-            self.logger.info(f"tmux config {tmux_conf_dst} exists.")
-            self.backup_dotfile(tmux_conf_dst)
-            self.modify_dotfile(tmux_conf_src, tmux_conf_dst)
-        else:
-            shutil.copy(tmux_conf_src, tmux_conf_dst)
-            self.logger.info(f"Installed new tmux config {tmux_conf_dst}")
-
-    def run_all(self, workspace_path: Path):
-        """
-        Run all the dotfile installation steps.
-        """
-        self.install_dotfiles()
         if workspace_path:
             self.update_shell_configuration(workspace_path)
             self.install_git_hooks(workspace_path)
         else:
-            self.logger.warning(
+            self.logger.debug(
                 "Workspace path not provided. Skipping workspace-related configurations."
             )
-        self.install_editor_configs()
-        self.install_tmux_config()
