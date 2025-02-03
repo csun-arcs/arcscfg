@@ -1,14 +1,22 @@
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
+
+from arcscfg.utils.workspace_manager import WorkspaceManager
 
 from .logger import Logger
 
 
 class DotfileManager:
-    def __init__(self, logger: Optional[Logger] = None, assume_yes: bool = False):
+    def __init__(
+        self,
+        logger: Optional[Logger] = None,
+        workspace_path: Optional[Path] = None,
+        assume_yes: bool = False,
+    ):
         self.logger = logger or Logger()
+        self.workspace_path = workspace_path
         self.assume_yes = assume_yes
 
         # Define the dotfiles to manage
@@ -221,7 +229,31 @@ class DotfileManager:
             else:
                 self.logger.warning(f"No git repository found at {repo_dir}")
 
-    def run_all(self, workspace_path: Optional[Path]):
+    def _get_workspace_path(self, workspace_path: Optional[Path]):
+        """
+        Resolve a given workspace path or get it by prompting the user.
+        """
+        if workspace_path:
+            workspace_path = Path(workspace_path).expanduser().resolve()
+            self.logger.debug(f"Using provided workspace path: {workspace_path}")
+            return workspace_path
+        else:
+            manager = WorkspaceManager(
+                workspace_path=None,
+                workspace_config=None,
+                assume_yes=self.assume_yes,
+                logger=self.logger,
+            )
+            workspace_path = manager.prompt_for_workspace(
+                default_workspace=None,
+                allow_available=True,
+                allow_create=False,
+            )
+            if workspace_path:
+                self.logger.debug(f"User selected workspace path: {workspace_path}")
+            return workspace_path
+
+    def run_all(self):
         """
         Run all the dotfile installation steps in a streamlined manner.
         Handles all types of dotfiles without redundancy.
@@ -229,6 +261,16 @@ class DotfileManager:
         install_dotfiles = input("Install dotfiles? (y/N): ").strip().lower()
         if install_dotfiles == "y":
             self.install_dotfiles()
+
+        # Get the workspace path if needed (for updating shell configuration and git hooks)
+        workspace_path = None
+        source_workspace = (
+            input("Configure your environment for a specific ROS 2 workspace? (y/N): ")
+            .strip()
+            .lower()
+        )
+        if source_workspace == "y":
+            workspace_path = self._get_workspace_path(self.workspace_path)
 
         if workspace_path:
             self.update_shell_configuration(workspace_path)
