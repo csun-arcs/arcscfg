@@ -37,7 +37,7 @@ class DotfileManager:
         """
         Backup the existing dotfile by copying it to a backup location.
         """
-        backup_dir = filepath.parent / "arcscfg_backups"
+        backup_dir = filepath.parent / ".arcscfg_dotfile_backups"
         backup_dir.mkdir(exist_ok=True)
         backup_path = backup_dir / (filepath.name + ".bak")
         shutil.copy(filepath, backup_path)
