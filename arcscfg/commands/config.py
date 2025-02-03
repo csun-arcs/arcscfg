@@ -45,7 +45,12 @@ class ConfigCommand(BaseCommand):
         dotfile_manager = DotfileManager(logger=self.logger, assume_yes=self.args.yes)
 
         # Get the workspace path if needed (for updating shell configuration and git hooks)
-        workspace_path = self._get_workspace_path()
+        workspace_path = None
+        source_workspace = (
+            input("Configure your environment for a specific ROS 2 workspace? (y/N): ").strip().lower()
+        )
+        if source_workspace == "y":
+            workspace_path = self._get_workspace_path()
 
         try:
             dotfile_manager.run_all(workspace_path)
