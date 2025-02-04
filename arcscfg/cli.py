@@ -9,6 +9,7 @@ from arcscfg.commands.install import InstallCommand
 from arcscfg.commands.setup import SetupCommand
 from arcscfg.commands.update import UpdateCommand
 from arcscfg.utils.logger import Logger
+from arcscfg.utils.backer_upper import BackerUpper
 
 
 def main():
@@ -48,6 +49,20 @@ def main():
         type=int,
         default=5,
         help="Number of backup log files to keep.",
+    )
+    parser.add_argument(
+        "-bd",
+        "--backup-dir",
+        type=str,
+        default=".arcscfg_backups",
+        help="Directory name where backups will be stored relative to each file's location.",
+    )
+    parser.add_argument(
+        "-bkc",
+        "--backup-count",
+        type=int,
+        default=50,
+        help="Number of backup copies to retain per file.",
     )
     parser.add_argument(
         "-y",
@@ -213,12 +228,18 @@ def main():
         backup_count=args.log_backup_count,
     )
 
+    backer_upper = BackerUpper(
+        backup_dir=args.backup_dir,
+        backup_count=args.backup_count,
+        logger=logger,  # Utilize the existing Logger
+    )
+
     logger.info("Starting arcscfg tool")
 
     # Instantiate and execute the selected command
     try:
         command_class = args.func
-        command_instance = command_class(args, logger)
+        command_instance = command_class(args, logger, backer_upper)
         command_instance.execute()
     except AttributeError:
         # This should not happen as subparsers are required
