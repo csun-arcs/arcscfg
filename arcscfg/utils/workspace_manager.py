@@ -9,6 +9,7 @@ import yaml
 
 from .logger import Logger
 from .shell import Shell
+from .user_prompter import UserPrompter  # Import UserPrompter
 
 
 class WorkspaceManager:
@@ -20,9 +21,11 @@ class WorkspaceManager:
         logger: Optional[Logger] = None,
         dependency_file_names: Optional[List[str]] = None,
         recursive_search: bool = False,
+        user_prompter: Optional[UserPrompter] = None,  # Add UserPrompter
     ):
         self.logger = logger or Logger()
         self.assume_yes = assume_yes
+        self.user_prompter = user_prompter or UserPrompter(assume_yes=assume_yes)
 
         self.workspace_path = (
             Path(workspace_path).expanduser().resolve() if workspace_path else None
@@ -223,6 +226,7 @@ class WorkspaceManager:
             try:
                 workspace_path.mkdir(parents=True, exist_ok=True)
                 self.logger.debug(f"Created workspace directory: {workspace_path}")
+                self.validate_src_directory(workspace_path, allow_create=True)
             except Exception as e:
                 raise PermissionError(
                     f"Cannot create workspace directory: {workspace_path}"
@@ -365,8 +369,7 @@ class WorkspaceManager:
             if len(prefixes) >= 2:
                 default_underlay = prefixes[-2]
                 self.logger.debug(
-                    f"Inferred default underlay before stripping: "
-                    f"{default_underlay}"
+                    f"Inferred default underlay before stripping: {default_underlay}"
                 )
 
                 # Strip '/install' or '/devel' only if present at the end
@@ -374,15 +377,13 @@ class WorkspaceManager:
                     stripped_underlay = Path(default_underlay).parent
                     default_underlay_str = str(stripped_underlay)
                     self.logger.debug(
-                        f"Inferred default underlay after stripping: "
-                        f"{default_underlay_str}"
+                        f"Inferred default underlay after stripping: {default_underlay_str}"
                     )
                 else:
                     # Retain the original path if no stripping is needed
                     default_underlay_str = default_underlay
                     self.logger.debug(
-                        f"Inferred default underlay without stripping: "
-                        f"{default_underlay_str}"
+                        f"Inferred default underlay without stripping: {default_underlay_str}"
                     )
 
                 return default_underlay_str
@@ -530,149 +531,59 @@ class WorkspaceManager:
 
         if allow_available:
             workspaces = self.find_available_workspaces()
-            print("\nAvailable ROS 2 workspaces in your home directory:")
-            for i, workspace in enumerate(workspaces, start=1):
-                print(f"{i}: {workspace}")
+            options = [f"{ws.stem} ('{ws}')" for ws in workspaces]
+            options.append(
+                "Create a new workspace"
+                if allow_create
+                else "Enter an existing workspace path"
+            )
 
-            if allow_create:
-                print(f"{len(workspaces)+1}: Create a new workspace")
-            else:
-                print(f"{len(workspaces)+1}: Enter an existing workspace path")
-            create_option = custom_option = len(workspaces) + 1
+            selection = self.user_prompter.prompt_selection(
+                message="Available ROS 2 workspaces:", options=options, default=1
+            )
 
-            while True:
-                try:
-                    if allow_create:
-                        if default_workspace and default_workspace in workspaces:
-                            default_option = workspaces.index(default_workspace) + 1
-                            prompt_msg = (
-                                f"Select a workspace " f"(default: {default_option}): "
-                            )
-                        else:
-                            default_option = create_option
-                            prompt_msg = (
-                                f"Select a workspace " f"(default: {default_option}): "
-                            )
-                    else:
-                        default_option = create_option
-                        prompt_msg = f"Select a workspace (default: {default_option}): "
-
-                    choice = input(prompt_msg).strip()
-                except EOFError:
-                    choice = str(default_option)
-
-                if not choice:
-                    choice_num = default_option
-                else:
+            if selection < len(workspaces):
+                selected_workspace = workspaces[selection]
+                self.logger.debug(
+                    f"User selected existing workspace: {selected_workspace}"
+                )
+                return selected_workspace
+            elif allow_create and selection == len(workspaces):
+                # Prompt for new workspace path
+                workspace_input = self.user_prompter.prompt_input(
+                    "Enter the full path for the new workspace",
+                    default=str(default_workspace) if default_workspace else "",
+                )
+                workspace = Path(workspace_input).expanduser().resolve()
+                if not workspace.exists():
                     try:
-                        choice_num = int(choice)
-                    except ValueError:
-                        print(
-                            "Invalid input. Please enter a number "
-                            "corresponding to the options."
-                        )
-                        continue
-
-                if allow_available and 1 <= choice_num <= len(workspaces):
-                    selected_workspace = workspaces[choice_num - 1]
-                    self.logger.debug(
-                        f"User selected existing workspace: " f"{selected_workspace}"
-                    )
-                    return selected_workspace
-                elif allow_create and choice_num == create_option:
-                    workspace_input = input(
-                        f"Enter the full path for the new workspace "
-                        f"(default: {default_workspace}): "
-                    ).strip()
-                    if not workspace_input:
-                        workspace_input = str(default_workspace)
-                    workspace = Path(workspace_input).expanduser().resolve()
-                    if not workspace.exists():
-                        try:
-                            self.validate_workspace_path(workspace, allow_create=True)
-                            self.validate_src_directory(workspace, allow_create=True)
-                            workspace.mkdir(parents=True, exist_ok=True)
-                            self.logger.debug(f"Created new workspace: {workspace}")
-                        except Exception as e:
-                            self.logger.error(f"Invalid workspace path: {e}")
-                            print(f"Invalid workspace: {e}")
-                            continue
-                    else:
-                        try:
-                            self.validate_workspace_path(workspace, allow_create=True)
-                            self.validate_src_directory(workspace, allow_create=True)
-                            self.logger.debug(
-                                f"Selected existing workspace: {workspace}"
-                            )
-                        except Exception as e:
-                            self.logger.error(f"Invalid workspace: {e}")
-                            print(f"Invalid workspace: {e}")
-                            continue
-                    return workspace
-                elif (
-                    not allow_create
-                    and allow_available
-                    and 1 <= choice_num <= len(workspaces)
-                ):
-                    selected_workspace = workspaces[choice_num - 1]
-                    self.logger.debug(
-                        f"User selected existing workspace: " f"{selected_workspace}"
-                    )
-                    return selected_workspace
-                elif not allow_create and choice_num == custom_option:
-                    workspace_input = input(
-                        f"Enter the full path to an existing workspace "
-                        f"(default: {default_workspace}): "
-                    ).strip()
-                    if not workspace_input:
-                        workspace_input = str(default_workspace)
-                    workspace = Path(workspace_input).expanduser().resolve()
-                    try:
-                        self.validate_workspace_path(workspace)
-                        self.validate_src_directory(workspace)
-                        self.logger.debug(f"Selected existing workspace: {workspace}")
+                        workspace.mkdir(parents=True, exist_ok=True)
+                        self.logger.debug(f"Created new workspace: {workspace}")
                     except Exception as e:
-                        self.logger.error(f"Invalid workspace: {e}")
-                        print(f"Invalid workspace: {e}")
-                        continue
-                    return workspace
+                        self.logger.error(f"Cannot create workspace directory: {e}")
+                        sys.exit(1)
                 else:
-                    print("Invalid selection. Please choose a valid number.")
+                    self.logger.debug(f"Selected existing workspace: {workspace}")
+                return workspace
+            else:
+                self.logger.error("Invalid workspace selection.")
+                sys.exit(1)
         else:
-            workspace_input = input(
-                f"Enter the full path for the new workspace "
-                f"(default: {default_workspace}): "
-            ).strip()
-            if not workspace_input:
-                workspace_input = str(default_workspace)
+            # Directly prompt for workspace path
+            workspace_input = self.user_prompter.prompt_input(
+                "Enter the full path for the workspace",
+                default=str(default_workspace) if default_workspace else "",
+            )
             workspace = Path(workspace_input).expanduser().resolve()
             if not workspace.exists():
                 try:
-                    self.validate_workspace_path(workspace, allow_create=True)
-                    self.validate_src_directory(workspace, allow_create=True)
                     workspace.mkdir(parents=True, exist_ok=True)
                     self.logger.debug(f"Created new workspace: {workspace}")
                 except Exception as e:
-                    self.logger.error(f"Invalid workspace path: {e}")
-                    print(f"Invalid workspace: {e}")
-                    return self.prompt_for_workspace(
-                        default_workspace=default_workspace,
-                        allow_available=allow_available,
-                        allow_create=allow_create,
-                    )
+                    self.logger.error(f"Cannot create workspace directory: {e}")
+                    sys.exit(1)
             else:
-                try:
-                    self.validate_workspace_path(workspace)
-                    self.validate_src_directory(workspace)
-                    self.logger.debug(f"Selected existing workspace: {workspace}")
-                except Exception as e:
-                    self.logger.error(f"Invalid workspace: {e}")
-                    print(f"Invalid workspace: {e}")
-                    return self.prompt_for_workspace(
-                        default_workspace=default_workspace,
-                        allow_available=allow_available,
-                        allow_create=allow_create,
-                    )
+                self.logger.debug(f"Selected existing workspace: {workspace}")
             return workspace
 
     def prompt_for_underlay(
@@ -699,82 +610,62 @@ class WorkspaceManager:
             self.logger.warning("No underlays found. Proceeding without underlays.")
             return None
 
-        print("\nAvailable underlays:")
-        default_option = None
-        for i, underlay in enumerate(underlays, start=1):
+        # Prepare options with "(last used underlay)" label
+        options = []
+        for underlay in underlays:
             if default_underlay and underlay == default_underlay:
-                print(f"{i}: {underlay} (last used underlay)")
-                default_option = i
+                option_str = f"{underlay.stem} ('{underlay}') (last used underlay)"
             else:
-                print(f"{i}: {underlay}")
+                option_str = f"{underlay.stem} ('{underlay}')"
+            options.append(option_str)
 
-        custom_option_number = len(underlays) + 1
-        print(f"{custom_option_number}: Enter a custom underlay path")
+        # Append the option for custom underlay path
+        options.append("Enter a custom underlay path")
 
+        # Determine default option index
         if default_underlay and default_underlay in underlays:
-            default_option = underlays.index(default_underlay) + 1
+            default_option = underlays.index(default_underlay) + 1  # 1-based index
         elif default_underlay and default_underlay not in underlays:
+            # If the last used underlay isn't in the current list, append it
             underlays.append(default_underlay)
-            print(f"{len(underlays)}: {default_underlay} (last used underlay)")
-            custom_option_number = len(underlays) + 1
-            print(f"{custom_option_number}: Enter a custom underlay path")
+            options.insert(-1, f"{default_underlay} (last used underlay)")
             default_option = len(underlays)
         else:
-            default_option = custom_option_number
+            default_option = len(underlays) + 1  # Default to 'Enter a custom path'
 
-        prompt_msg = f"Select an underlay (default: {default_option}): "
+        selection = self.user_prompter.prompt_selection(
+            message="Available ROS 2 underlays:",
+            options=options,
+            default=default_option
+        )
 
-        while True:
-            try:
-                choice = input(prompt_msg).strip()
-            except EOFError:
-                choice = str(default_option)
-
-            if not choice:
-                choice_num = default_option
-            else:
-                try:
-                    choice_num = int(choice)
-                except ValueError:
-                    print(
-                        "Invalid input. Please enter a number "
-                        "corresponding to the options."
-                    )
-                    continue
-
-            if 1 <= choice_num <= len(underlays):
-                selected_underlay = underlays[choice_num - 1]
-                self.logger.debug(f"User selected underlay: {selected_underlay}")
-                return selected_underlay
-            elif choice_num == custom_option_number:
-                custom_path = input("Enter the path to the custom underlay: ").strip()
-                if not custom_path:
-                    print("Please enter a valid existing path.")
-                    continue
-                custom_underlay = Path(custom_path).expanduser().resolve()
-                if not custom_underlay.exists():
-                    self.logger.error(
-                        f"Provided underlay path does not exist: " f"{custom_underlay}"
-                    )
-                    print(
-                        "Provided underlay path does not exist. "
-                        "Please enter a valid path."
-                    )
-                    continue
-                setup_file = self.get_workspace_setup_file(custom_underlay)
-                if not setup_file or not setup_file.exists():
-                    self.logger.error(
-                        f"No setup file found in the custom underlay: "
-                        f"{custom_underlay}"
-                    )
-                    print("No valid setup file found in " "the provided underlay path.")
-                    continue
-                self.logger.debug(
-                    f"User entered custom underlay: " f"{custom_underlay}"
+        if selection < len(underlays):
+            selected_underlay = underlays[selection]
+            self.logger.debug(f"User selected underlay: {selected_underlay}")
+            return selected_underlay
+        elif selection == len(underlays):
+            # Handle custom path input
+            custom_path = self.user_prompter.prompt_input(
+                "Enter the path to the custom underlay"
+            )
+            custom_underlay = Path(custom_path).expanduser().resolve()
+            if not custom_underlay.exists():
+                self.logger.error(
+                    f"Provided underlay path does not exist: {custom_underlay}"
                 )
-                return custom_underlay
-            else:
-                print("Invalid selection. Please choose a valid number.")
+                sys.exit(1)
+            setup_file = self.get_workspace_setup_file(custom_underlay)
+            if not setup_file or not setup_file.exists():
+                self.logger.error(
+                    f"No setup file found in the custom underlay: {custom_underlay}"
+                )
+                print("No valid setup file found in the provided underlay path.")
+                sys.exit(1)
+            self.logger.debug(f"User entered custom underlay: {custom_underlay}")
+            return custom_underlay
+        else:
+            self.logger.error("Invalid underlay selection.")
+            sys.exit(1)
 
     def verify_ros_setup(self) -> bool:
         """Verify that ROS 2 environment variables are set correctly."""
