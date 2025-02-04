@@ -10,6 +10,7 @@ from arcscfg.commands.setup import SetupCommand
 from arcscfg.commands.update import UpdateCommand
 from arcscfg.utils.logger import Logger
 from arcscfg.utils.backer_upper import BackerUpper
+from arcscfg.utils.user_prompter import UserPrompter
 
 
 def main():
@@ -220,7 +221,7 @@ def main():
     # Parse the arguments
     args = parser.parse_args()
 
-    # Initialize Logger with global arguments
+    # Initialize logger
     logger = Logger(
         verbosity=args.verbosity,
         log_file_path=Path(args.log_file_path) if args.log_file_path else None,
@@ -228,18 +229,22 @@ def main():
         backup_count=args.log_backup_count,
     )
 
+    # Initialize file backer-upper
     backer_upper = BackerUpper(
         backup_dir=args.backup_dir,
         backup_count=args.backup_count,
         logger=logger,  # Utilize the existing Logger
     )
 
+    # Initialize user prompter
+    user_prompter = UserPrompter(assume_yes=args.yes)
+
     logger.info("Starting arcscfg tool")
 
     # Instantiate and execute the selected command
     try:
         command_class = args.func
-        command_instance = command_class(args, logger, backer_upper)
+        command_instance = command_class(args, logger, backer_upper, user_prompter)
         command_instance.execute()
     except AttributeError:
         # This should not happen as subparsers are required
