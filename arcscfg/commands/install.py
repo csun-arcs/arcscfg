@@ -116,7 +116,7 @@ class InstallCommand(BaseCommand):
             sys.exit(1)
 
         # Prompt for selection
-        options = [f.name for f in available_files]
+        options = [f"{f.stem} ('{f}')" for f in available_files]
         options.append("Enter custom path")
 
         selection = self.user_prompter.prompt_selection(
