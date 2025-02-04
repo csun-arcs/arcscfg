@@ -1,5 +1,3 @@
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -16,26 +14,35 @@ class SetupCommand(BaseCommand):
     def execute(self):
         self.logger.debug("Executing SetupCommand")
 
+        # Initialize WorkspaceManager
+        manager = WorkspaceManager(
+            workspace_path=None,  # Will set after prompting
+            workspace_config=None,
+            assume_yes=self.args.yes,
+            logger=self.logger,
+            dependency_file_names=self.args.package_dependency_files,
+            recursive_search=self.args.recursive_search,
+            user_prompter=self.user_prompter,  # Inject UserPrompter
+        )
+
+        # Get or prompt for workspace configuration
         workspace_config = self._get_or_prompt_workspace_config()
         if not workspace_config:
             self.logger.error("Workspace configuration could not be determined.")
             sys.exit(1)
 
-        manager = WorkspaceManager(
-            workspace_path=None,  # Will set after prompting
-            workspace_config=str(workspace_config),
-            assume_yes=self.args.yes,
-            logger=self.logger,
-            dependency_file_names=self.args.package_dependency_files,
-            recursive_search=self.args.recursive_search,
-        )
+        # Load workspace configuration into WorkspaceManager
+        manager.workspace_config = workspace_config
 
+        # Get or prompt for workspace path
         workspace_path = self._get_or_prompt_workspace(manager)
         if not workspace_path:
             self.logger.error("Workspace path could not be determined.")
             sys.exit(1)
 
         manager.workspace_path = workspace_path
+
+        # Set up the workspace
         manager.setup_workspace()
 
         self.logger.info("Workspace setup completed successfully.")
@@ -59,9 +66,10 @@ class SetupCommand(BaseCommand):
                     # Attempt relative to config/workspaces
                     workspace_config = (
                         Path(__file__).parent.parent
-                        / "config/workspaces"
+                        / "config"
+                        / "workspaces"
                         / self.args.workspace_config
-                    )
+                    ).resolve()
                     self.logger.debug(
                         f"Attempting to resolve relative workspace config: {workspace_config}"
                     )
@@ -72,9 +80,10 @@ class SetupCommand(BaseCommand):
                         # Attempt adding .yaml extension
                         workspace_config = (
                             Path(__file__).parent.parent
-                            / "config/workspaces"
+                            / "config"
+                            / "workspaces"
                             / f"{self.args.workspace_config}.yaml"
-                        )
+                        ).resolve()
                         self.logger.debug(
                             f"Attempting to resolve workspace config path with .yaml extension: {workspace_config}"
                         )
@@ -87,13 +96,14 @@ class SetupCommand(BaseCommand):
                         )
                         # Reset "assume yes to defaults" to ensure user is prompted for workspace config
                         self.args.yes = False
+
         if not workspace_config:
             workspace_configs = self._get_available_workspace_configs()
             workspace_config = self._prompt_for_workspace_config(workspace_configs)
             self.logger.debug(f"Selected workspace config: {workspace_config}")
         return workspace_config
 
-    def _get_available_workspace_configs(self) -> list:
+    def _get_available_workspace_configs(self) -> list[Path]:
         """
         Retrieve available workspace configuration files.
         """
@@ -119,53 +129,31 @@ class SetupCommand(BaseCommand):
                 )
                 sys.exit(1)
 
-        print("\nAvailable workspace configs:")
-        for i, workspace_config in enumerate(workspace_configs, start=1):
-            print(
-                f"{i}: {os.path.splitext(workspace_config.name)[0]} (config file path: '{workspace_config}')"
+        options = [f"{config.stem} ('{config}')" for config in workspace_configs]
+        options.append("Enter a custom workspace config file path")
+
+        selection = self.user_prompter.prompt_selection(
+            message="Available workspace configurations:",
+            options=options,
+            default=1,  # First option as default
+        )
+
+        if selection < len(workspace_configs):
+            return workspace_configs[selection]
+
+        # Handle custom path input
+        custom_config = self.user_prompter.prompt_input(
+            "Enter the path to the custom workspace config"
+        )
+        custom_config_path = Path(custom_config).expanduser().resolve()
+
+        if not custom_config_path.is_file():
+            self.logger.error(
+                f"Custom workspace config does not exist: {custom_config_path}"
             )
+            sys.exit(1)
 
-        print(f"{len(workspace_configs)+1}: Enter a custom workspace config file path")
-
-        while True:
-            try:
-                choice = input("Select a workspace config (default: 1): ").strip()
-            except EOFError:
-                choice = "1"
-
-            if not choice:
-                choice_num = 1
-            else:
-                try:
-                    choice_num = int(choice)
-                except ValueError:
-                    print(
-                        "Invalid input. Please enter a number corresponding to the options."
-                    )
-                    continue
-
-            if 1 <= choice_num <= len(workspace_configs):
-                selected_config = workspace_configs[choice_num - 1]
-                self.logger.debug(f"User selected workspace config: {selected_config}")
-                return selected_config
-            elif choice_num == len(workspace_configs) + 1:
-                # Allow user to enter a custom path
-                custom_config = input(
-                    "Enter the path to the custom workspace config: "
-                ).strip()
-                custom_config_path = Path(custom_config).expanduser().resolve()
-                if not custom_config_path.is_file():
-                    self.logger.error(
-                        f"Custom workspace config does not exist: {custom_config_path}"
-                    )
-                    print("Please enter a valid existing file path.")
-                    continue
-                self.logger.debug(
-                    f"User entered custom workspace config: {custom_config_path}"
-                )
-                return custom_config_path
-            else:
-                print("Invalid selection. Please choose a valid number.")
+        return custom_config_path
 
     def _get_or_prompt_workspace(self, manager: WorkspaceManager) -> Path:
         """
