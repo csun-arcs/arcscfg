@@ -38,7 +38,7 @@ class DotfileManager:
 
         # Paths to the dotfiles and githooks directories
         self.dotfiles_dir = Path(__file__).parent.parent / "config" / "dotfiles"
-        self.githooks_dir = Path(__file__).parent.parent / "config" / "githooks"
+        self.githooks_dir = Path(__file__).parent.parent / "config" / "dotfiles" / "githooks"
 
         # Path to the Gitconfig template
         self.gitconfig_template = self.dotfiles_dir / ".gitconfig"
