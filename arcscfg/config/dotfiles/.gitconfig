@@ -1,2 +1,2 @@
 [core]
-    hooksPath = ${HOOKS_PATH}
+    hooksPath = ${ARCSCFG_GITHOOKS_PATH}
