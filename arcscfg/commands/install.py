@@ -71,8 +71,8 @@ class InstallCommand(BaseCommand):
         default_index = (
             available_distros.index(self.args.ros_distro)
             if self.args.ros_distro in available_distros
-            else 8
-        )  # Default to 'iron'
+            else 9
+        )  # Default to 'jazzy'
 
         selection = self.user_prompter.prompt_selection(
             message="Select a ROS 2 distribution to install:",
