@@ -4,11 +4,11 @@ from pathlib import Path
 from string import Template
 from typing import Optional
 
-
+from arcscfg.utils.user_prompter import UserPrompter  # Import UserPrompter
 from arcscfg.utils.workspace_manager import WorkspaceManager
 
-from .logger import Logger
 from .backer_upper import BackerUpper
+from .logger import Logger
 
 
 class DotfileManager:
@@ -18,11 +18,13 @@ class DotfileManager:
         backer_upper: Optional[BackerUpper] = None,
         workspace_path: Optional[Path] = None,
         assume_yes: bool = False,
+        user_prompter: Optional[UserPrompter] = None,  # Inject UserPrompter
     ):
         self.logger = logger or Logger()
         self.backer_upper = backer_upper or BackerUpper()
         self.workspace_path = workspace_path
         self.assume_yes = assume_yes
+        self.user_prompter = user_prompter or UserPrompter(assume_yes=assume_yes)
 
         # Define the dotfiles to manage
         self.dotfiles = [
@@ -61,10 +63,12 @@ class DotfileManager:
             src = self.dotfiles_dir / dotfile.lstrip(".")
             dst = Path.home() / dotfile
 
-            # Prompt the user
+            # Prompt the user using UserPrompter
             if not self.assume_yes:
-                proceed = input(f"Update {dst}? (y/N): ").strip().lower()
-                if proceed != "y":
+                proceed = self.user_prompter.prompt_yes_no(
+                    f"Update {dst}?", default=False
+                )
+                if not proceed:
                     self.logger.debug(f"Skipping {dst} as per user request.")
                     continue
 
@@ -176,7 +180,9 @@ class DotfileManager:
 
         # If target_path exists, back it up
         if target_path.exists():
-            self.logger.debug(f"{target_path} exists. Backing it up before overwriting.")
+            self.logger.debug(
+                f"{target_path} exists. Backing it up before overwriting."
+            )
             self.backer_upper.backup(target_path)
 
         # Write the new .gitconfig
@@ -194,7 +200,6 @@ class DotfileManager:
 
         Args:
             global_config (bool): If True, install globally to ~/.gitconfig.
-            local_repo_path (Optional[Path]): If provided, install to <repo>/.git/config.
         """
         if global_config:
             target_path = Path.home() / ".gitconfig"
@@ -220,14 +225,15 @@ class DotfileManager:
         """
         Add a line to the user's shell configuration file to source the workspace setup script.
         """
-        source_workspace = (
-            input("Source workspace from your shell config (.bashrc or .zshrc)? (y/N): ")
-            .strip()
-            .lower()
-            if not self.assume_yes
-            else "y"
-        )
-        if not source_workspace == "y":
+        if self.assume_yes:
+            source_workspace = "y"
+        else:
+            source_workspace = self.user_prompter.prompt_yes_no(
+                "Source workspace from your shell config (.bashrc or .zshrc)?",
+                default=False,
+            )
+
+        if not source_workspace:
             return
 
         shell = Path(os.environ.get("SHELL", "/bin/bash")).name
@@ -254,21 +260,6 @@ class DotfileManager:
             lines = file.readlines()
             if any(line.strip() == line_to_add.strip() for line in lines):
                 self.logger.info(f"Setup script already sourced in {shell_rc_file}")
-                return
-
-        # Prompt the user
-        if not self.assume_yes:
-            proceed = (
-                input(
-                    f"Update {shell_rc_file} to source the workspace setup script? (y/N): "
-                )
-                .strip()
-                .lower()
-            )
-            if proceed != "y":
-                self.logger.debug(
-                    f"Skipping update of {shell_rc_file} as per user request."
-                )
                 return
 
         # Backup the shell configuration file
@@ -303,46 +294,45 @@ class DotfileManager:
                 allow_create=False,
             )
             if self.workspace_path:
-                self.logger.debug(f"User selected workspace path: {self.workspace_path}")
+                self.logger.debug(
+                    f"User selected workspace path: {self.workspace_path}"
+                )
 
     def run_all(self):
         """
         Run all the dotfile installation steps.
         """
         install_dotfiles = (
-            input("Install dotfiles? (y/N): ").strip().lower()
+            self.user_prompter.prompt_yes_no("Install dotfiles?", default=False)
             if not self.assume_yes
-            else "y"
+            else True
         )
-        if install_dotfiles == "y":
+        if install_dotfiles:
             self.install_dotfiles()
 
         # Get the workspace path if needed (for updating shell configuration and git hooks)
         config_workspace = (
-            input("Configure your environment for a specific ROS 2 workspace? (y/N): ")
-            .strip()
-            .lower()
+            self.user_prompter.prompt_yes_no(
+                "Configure your environment for a specific ROS 2 workspace?",
+                default=False,
+            )
             if not self.assume_yes
-            else "y"
+            else True
         )
-        if config_workspace == "y":
+        if config_workspace:
             self.resolve_workspace_path()
             self.source_workspace_from_shell_cfg()
 
         # Handle Git configuration
-        self.logger.debug("Configuring Git hooks paths.")
-        gitconfig_choice = (
-            input(
-                "Configure Git hooks globally or locally in workspace repositories? ((g)lobal/(l)ocal/(S)kip): "
-            )
-            .strip()
-            .lower()
-            if not self.assume_yes
-            else "global"
+        git_options = ["global", "local", "skip"]
+        gitconfig_choice = self.user_prompter.prompt_input(
+            "Configure Git hooks globally or locally in workspace repositories?",
+            options=git_options,
+            default="global" if git_options[0] else None,
         )
-        if gitconfig_choice == "g" or gitconfig_choice == "global":
+        if gitconfig_choice.lower().startswith("g"):
             self.install_gitconfig(global_config=True)
-        elif gitconfig_choice == "l" or gitconfig_choice in "local":
+        elif gitconfig_choice.lower().startswith("l"):
             self.install_gitconfig(global_config=False)
         else:
             self.logger.info("Skipping Git hooks configuration as per user choice.")
