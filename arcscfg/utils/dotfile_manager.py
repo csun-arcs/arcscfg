@@ -175,7 +175,7 @@ class DotfileManager:
 
         # Substitute the placeholder with actual hooks path
         gitconfig_content = Template(template_content).safe_substitute(
-            ARCSCFG_HOOKS_PATH=hooks_path
+            ARCSCFG_GITHOOKS_PATH=hooks_path
         )
 
         # If target_path exists, back it up
