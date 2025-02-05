@@ -1,3 +1,5 @@
-# arcscfg/arcscfg/config/dotfiles/.bashrc
+# ${ARCSCFG_START_BLOCK}
+# --- This block is managed by arcscfg (CSUN ARCS Configurator) ---
 #
-# Tempoary .bashrc test dotfile
+source ${ARCSCFG_BASHRC_DIR}/aliases.sh
+# ${ARCSCFG_END_BLOCK}

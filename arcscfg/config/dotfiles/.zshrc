@@ -1,3 +1,5 @@
-# arcscfg/arcscfg/config/dotfiles/.zshrc
+# ${ARCSCFG_START_BLOCK}
+# --- This block is managed by arcscfg (CSUN ARCS Configurator) ---
 #
-# Temporary .zshrc test dotfile
+source ${ARCSCFG_ZSHRC_DIR}/aliases.sh
+# ${ARCSCFG_END_BLOCK}

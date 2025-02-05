@@ -1,14 +1,13 @@
 import os
-import shutil
+import re
 from pathlib import Path
 from string import Template
 from typing import Optional
 
-from arcscfg.utils.user_prompter import UserPrompter  # Import UserPrompter
+from arcscfg.utils.backer_upper import BackerUpper
+from arcscfg.utils.logger import Logger
+from arcscfg.utils.user_prompter import UserPrompter
 from arcscfg.utils.workspace_manager import WorkspaceManager
-
-from .backer_upper import BackerUpper
-from .logger import Logger
 
 
 class DotfileManager:
@@ -18,7 +17,7 @@ class DotfileManager:
         backer_upper: Optional[BackerUpper] = None,
         workspace_path: Optional[Path] = None,
         assume_yes: bool = False,
-        user_prompter: Optional[UserPrompter] = None,  # Inject UserPrompter
+        user_prompter: Optional[UserPrompter] = None,
     ):
         self.logger = logger or Logger()
         self.backer_upper = backer_upper or BackerUpper()
@@ -26,41 +25,34 @@ class DotfileManager:
         self.assume_yes = assume_yes
         self.user_prompter = user_prompter or UserPrompter(assume_yes=assume_yes)
 
-        # Define the dotfiles to manage
-        self.dotfiles = [
-            ".bashrc",
-            ".zshrc",
-            ".vimrc",
-            ".emacs",
-            ".tmux.conf",
-            # Add more dotfiles as needed
-        ]
-
         # Paths to the dotfiles and githooks directories
         self.dotfiles_dir = Path(__file__).parent.parent / "config" / "dotfiles"
-        self.githooks_dir = Path(__file__).parent.parent / "config" / "dotfiles" / "githooks"
+        self.githooks_dir = self.dotfiles_dir / "githooks"
 
-        # Path to the Gitconfig template
-        self.gitconfig_template = self.dotfiles_dir / ".gitconfig"
+        # Collect dotfile templates present in the dotfiles directory
+        self.dotfiles = [
+            f"{f.name}"
+            for f in self.dotfiles_dir.iterdir()
+            if f.is_file() and f.name != ".gitconfig"
+        ]
 
-    def backup_dotfile(self, filepath: Path):
-        """
-        Backup the existing dotfile by copying it to a backup location.
-        """
-        backup_dir = filepath.parent / ".arcscfg_dotfile_backups"
-        backup_dir.mkdir(exist_ok=True)
-        backup_path = backup_dir / (filepath.name + ".bak")
-        shutil.copy(filepath, backup_path)
-        self.logger.debug(f"Backed up {filepath} to {backup_path}")
+        # Create a unified context for template variable substitution
+        self.context = {
+            "ARCSCFG_START_BLOCK": ">>> arcscfg >>>",
+            "ARCSCFG_END_BLOCK": "<<< arcscfg <<<",
+            "ARCSCFG_BASHRC_DIR": str((self.dotfiles_dir / "bashrc").resolve()),
+            "ARCSCFG_ZSHRC_DIR": str((self.dotfiles_dir / "zshrc").resolve()),
+            "ARCSCFG_GITHOOKS_PATH": str(self.githooks_dir.resolve()),
+            # Add more variables as needed
+        }
 
-    def install_dotfiles(self):
+    def config_dotfiles(self):
         """
-        Install or update all dotfiles, delegating specific configurations
-        to helper methods as necessary.
+        Configure dotfiles with their respective handlers.
         """
         self.logger.info("Installing dotfiles...")
         for dotfile in self.dotfiles:
-            src = self.dotfiles_dir / dotfile.lstrip(".")
+            src = self.dotfiles_dir / dotfile
             dst = Path.home() / dotfile
 
             # Prompt the user using UserPrompter
@@ -72,166 +64,132 @@ class DotfileManager:
                     self.logger.debug(f"Skipping {dst} as per user request.")
                     continue
 
-            if dotfile in [".bashrc", ".zshrc"]:
-                self.handle_shell_dotfile(dotfile, src, dst)
-            elif dotfile in [".vimrc", ".emacs"]:
-                self.handle_editor_dotfile(src, dst)
-            elif dotfile == ".tmux.conf":
-                self.handle_tmux_config(src, dst)
-            else:
-                self.handle_generic_dotfile(src, dst)
+                self.handle_dotfile(dotfile, src, dst)
 
-    def handle_shell_dotfile(self, dotfile_name: str, src: Path, dst: Path):
+    def handle_dotfile(self, dotfile_name: str, src: Path, dst: Path):
         """
-        Handle .bashrc and .zshrc files by adding include lines to snippets.
+        Handle generic dotfiles by inserting or updating a template block.
         """
-        snippets_dir = self.dotfiles_dir / dotfile_name.lstrip(".")
-        main_snippet = snippets_dir / "main.sh"
-        main_snippet_path = main_snippet.resolve()
-        include_line = f"source {main_snippet_path}\n"
+        # Read the template content and perform variable substitution
+        with src.open("r") as template_file:
+            template = Template(template_file.read())
+            template_content = template.safe_substitute(self.context)
 
-        if dst.exists():
-            self.logger.info(f"{dst} exists. Adding include line.")
-            self.backer_upper.backup(dst)
+        start_marker = self.context["ARCSCFG_START_BLOCK"]
+        end_marker = self.context["ARCSCFG_END_BLOCK"]
 
-            # Check if the include line already exists
-            with dst.open("r") as file:
-                lines = file.readlines()
-                if any(include_line.strip() in line.strip() for line in lines):
-                    self.logger.info(f"Include line already present in {dst}")
-                    return
-
-            # Append the include line
-            with dst.open("a") as file:
-                file.write("\n# Added by arcscfg\n")
-                file.write(include_line)
-            self.logger.info(f"Updated {dst} to include arcscfg snippets.")
-
-        else:
-            # Create a new dotfile with the include line
-            with dst.open("w") as file:
-                file.write("# Created by arcscfg\n")
-                file.write(include_line)
-            self.logger.info(f"Installed new shell dotfile {dst}")
-
-    def handle_editor_dotfile(self, src: Path, dst: Path):
-        """
-        Handle editor configuration files like .vimrc and .emacs.
-        """
-        self.logger.info(f"Configuring editor dotfile {dst}")
-        self.modify_dotfile(src, dst)
-
-    def handle_tmux_config(self, src: Path, dst: Path):
-        """
-        Handle tmux configuration file.
-        """
-        self.logger.info(f"Configuring TMUX config {dst}")
-        self.modify_dotfile(src, dst)
-
-    def handle_generic_dotfile(self, src: Path, dst: Path):
-        """
-        Handle generic dotfiles not requiring special processing.
-        """
-        if dst.exists():
-            self.logger.info(f"Dotfile {dst} exists.")
-            self.backer_upper.backup(dst)
-            shutil.copy(src, dst)
-            self.logger.info(f"Updated {dst}")
-        else:
-            # Copy the dotfile
-            shutil.copy(src, dst)
-            self.logger.info(f"Installed new dotfile {dst}")
-
-    def modify_dotfile(self, src: Path, dst: Path):
-        """
-        Modify the existing dotfile by appending necessary configurations.
-        """
-        self.logger.info(f"Modifying existing dotfile {dst}")
-        with src.open("r") as src_file:
-            content_to_add = src_file.read()
-
-        with dst.open("a") as dst_file:
-            dst_file.write("\n# Added by arcscfg\n")
-            dst_file.write(content_to_add)
-
-    def handle_gitconfig(self, target_path: Path):
-        """
-        Handle the installation of the .gitconfig file by templating the hooksPath.
-        """
-        if not self.gitconfig_template.exists():
-            self.logger.error(
-                f"Gitconfig template not found at {self.gitconfig_template}"
-            )
-            return
-
-        self.logger.debug(f"Configuring Git using template: {self.gitconfig_template}")
-
-        # Read the template content
-        with self.gitconfig_template.open("r") as template_file:
-            template_content = template_file.read()
-
-        # Prepare the hooks path
-        hooks_path = str(self.githooks_dir.resolve())
-
-        # Substitute the placeholder with actual hooks path
-        gitconfig_content = Template(template_content).safe_substitute(
-            ARCSCFG_GITHOOKS_PATH=hooks_path
+        # Prepare the regex pattern to search for the block
+        block_pattern = re.compile(
+            rf"{re.escape(start_marker)}.*?{re.escape(end_marker)}",
+            re.DOTALL,
         )
 
-        # If target_path exists, back it up
-        if target_path.exists():
-            self.logger.debug(
-                f"{target_path} exists. Backing it up before overwriting."
-            )
-            self.backer_upper.backup(target_path)
+        if dst.exists():
+            self.logger.info(f"{dst} exists. Updating or inserting the block.")
+            self.backer_upper.backup(dst)
 
-        # Write the new .gitconfig
-        with target_path.open("w") as config_file:
-            config_file.write(gitconfig_content)
+            with dst.open("r") as file:
+                content = file.read()
 
-        self.logger.debug(f"Installed Git configuration to {target_path}")
+            # Search for the existing block
+            if block_pattern.search(content):
+                # Replace the existing block
+                new_content = block_pattern.sub(template_content, content)
+                self.logger.debug(f"Replaced existing block in {dst}")
+            else:
+                # Append the block at the end
+                new_content = content.rstrip() + "\n\n" + template_content
+                self.logger.debug(f"Appended new block to {dst}")
 
-    def install_gitconfig(
-        self,
-        global_config: bool = False,
-    ):
+            with dst.open("w") as file:
+                file.write(new_content)
+            self.logger.info(f"Updated {dst}")
+        else:
+            # Create a new dotfile with the template content
+            with dst.open("w") as file:
+                file.write(template_content)
+            self.logger.info(f"Installed new dotfile {dst}")
+
+    def handle_gitconfig(self, src: Path, dst: Path):
         """
-        Install the .gitconfig either globally or in a specific repository.
+        Handle the installation of the .gitconfig file by merging configurations.
+        """
+        import configparser
+
+        self.logger.debug(f"Configuring Git using template: {src}")
+
+        # Read the template config
+        template_config = configparser.RawConfigParser()
+        template_config.read_string(src.read_text())
+
+        # Substitute variables in the template config
+        for section in template_config.sections():
+            for key, value in template_config.items(section):
+                substituted_value = Template(value).safe_substitute(self.context)
+                template_config.set(section, key, substituted_value)
+
+        # Read the existing config
+        existing_config = configparser.RawConfigParser()
+        existing_config.read(dst)
+
+        # Merge the template config into the existing config
+        for section in template_config.sections():
+            if not existing_config.has_section(section):
+                existing_config.add_section(section)
+            for key, value in template_config.items(section):
+                existing_config.set(section, key, value)
+
+        # Backup the existing config
+        if dst.exists():
+            self.backer_upper.backup(dst)
+
+        # Write the merged config back to the file
+        with dst.open("w") as configfile:
+            existing_config.write(configfile)
+
+        self.logger.debug(f"Updated Git configuration at {dst}")
+
+    def config_gitconfig(self, mode: str):
+        """
+        Configure git config either globally or in local repositories.
 
         Args:
-            global_config (bool): If True, install globally to ~/.gitconfig.
+            mode (str): 'global' or 'local' indicating installation mode.
         """
-        if global_config:
-            target_path = Path.home() / ".gitconfig"
+        src = self.dotfiles_dir / ".gitconfig"
+        if mode == "global":
+            dst = Path.home() / ".gitconfig"
             self.logger.info("Installing Git configuration globally.")
-            self.handle_gitconfig(target_path)
-        else:
+            self.handle_gitconfig(src, dst)
+        elif mode == "local":
             if self.workspace_path:
                 src_dir = self.workspace_path / "src"
+                for repo_dir in src_dir.iterdir():
+                    if not repo_dir.is_dir():
+                        continue
+                    git_config_path = repo_dir / ".git" / "config"
+                    if git_config_path.exists():
+                        self.logger.info(
+                            f"Installing Git configuration for repository: {repo_dir}"
+                        )
+                        self.handle_gitconfig(src, git_config_path)
             else:
                 self.logger.error("Workspace path has not been set.")
-                return
-
-            for repo_dir in src_dir.iterdir():
-                if not repo_dir.is_dir():
-                    continue
-                target_path = repo_dir / ".git" / "config"
-                self.logger.info(
-                    f"Installing Git configuration for repository: {repo_dir}"
-                )
-                self.handle_gitconfig(target_path)
+        else:
+            self.logger.error(f"Invalid mode '{mode}' for Git configuration.")
 
     def source_workspace_from_shell_cfg(self):
         """
         Add a line to the user's shell configuration file to source the workspace setup script.
         """
-        if self.assume_yes:
-            source_workspace = "y"
-        else:
-            source_workspace = self.user_prompter.prompt_yes_no(
+        source_workspace = (
+            self.user_prompter.prompt_yes_no(
                 "Source workspace from your shell config (.bashrc or .zshrc)?",
                 default=False,
             )
+            if not self.assume_yes
+            else True
+        )
 
         if not source_workspace:
             return
@@ -241,7 +199,6 @@ class DotfileManager:
             "bash": ".bashrc",
             "zsh": ".zshrc",
         }
-
         shell_rc_file = Path.home() / shell_rc.get(shell, ".bashrc")
         if self.workspace_path:
             setup_script_path = self.workspace_path / "install" / "setup.bash"
@@ -255,24 +212,55 @@ class DotfileManager:
 
         line_to_add = f"source {setup_script_path}\n"
 
-        # Check if the line already exists
-        with shell_rc_file.open("r") as file:
-            lines = file.readlines()
-            if any(line.strip() == line_to_add.strip() for line in lines):
-                self.logger.info(f"Setup script already sourced in {shell_rc_file}")
-                return
+        # Insert the line into the shell configuration file using block markers
+        self.handle_shell_configuration(shell_rc_file, line_to_add)
 
-        # Backup the shell configuration file
-        self.backer_upper.backup(shell_rc_file)
+    def handle_shell_configuration(self, dst: Path, line_to_add: str):
+        """
+        Handle inserting or updating the workspace sourcing line in the shell configuration.
+        """
+        start_marker = self.context["ARCSCFG_START_BLOCK"]
+        end_marker = self.context["ARCSCFG_END_BLOCK"]
 
-        # Append the sourcing line
-        with shell_rc_file.open("a") as file:
-            file.write("\n# Added by arcscfg\n")
-            file.write(line_to_add)
-
-        self.logger.info(
-            f"Updated {shell_rc_file} to source the workspace setup script."
+        # Prepare the content to insert
+        content_to_insert = (
+            f"{start_marker}\n# Added by arcscfg\n{line_to_add}{end_marker}"
         )
+
+        # Prepare the regex pattern to search for the block
+        block_pattern = re.compile(
+            rf"{re.escape(start_marker)}.*?{re.escape(end_marker)}",
+            re.DOTALL,
+        )
+
+        if dst.exists():
+            self.logger.info(
+                f"{dst} exists. Updating or inserting the workspace sourcing line."
+            )
+            self.backer_upper.backup(dst)
+
+            with dst.open("r") as file:
+                content = file.read()
+
+            # Search for the existing block
+            if block_pattern.search(content):
+                # Replace the existing block
+                new_content = block_pattern.sub(content_to_insert, content)
+                self.logger.debug(f"Replaced existing sourcing line in {dst}")
+            else:
+                # Append the block at the end
+                new_content = content.rstrip() + "\n\n" + content_to_insert
+                self.logger.debug(f"Appended new sourcing line to {dst}")
+
+            with dst.open("w") as file:
+                file.write(new_content)
+            self.logger.info(f"Updated {dst} to source the workspace setup script.")
+
+        else:
+            # Create a new shell config file with the content to insert
+            with dst.open("w") as file:
+                file.write(content_to_insert)
+            self.logger.info(f"Created new shell configuration file {dst}")
 
     def resolve_workspace_path(self):
         """
@@ -287,6 +275,7 @@ class DotfileManager:
                 workspace_config=None,
                 assume_yes=self.assume_yes,
                 logger=self.logger,
+                user_prompter=self.user_prompter,
             )
             self.workspace_path = manager.prompt_for_workspace(
                 default_workspace=None,
@@ -302,37 +291,48 @@ class DotfileManager:
         """
         Run all the dotfile installation steps.
         """
-        install_dotfiles = (
-            self.user_prompter.prompt_yes_no("Install dotfiles?", default=False)
-            if not self.assume_yes
-            else True
-        )
-        if install_dotfiles:
-            self.install_dotfiles()
-
-        # Get the workspace path if needed (for updating shell configuration and git hooks)
-        config_workspace = (
-            self.user_prompter.prompt_yes_no(
-                "Configure your environment for a specific ROS 2 workspace?",
-                default=False,
+        # Configure dotfiles
+        if not self.assume_yes:
+            config_dotfiles = self.user_prompter.prompt_yes_no(
+                "Configure dotfiles?", default=False
             )
-            if not self.assume_yes
-            else True
-        )
+        else:
+            config_dotfiles = True
+
+        if config_dotfiles:
+            self.config_dotfiles()
+
+        # Prompt user for specific workspace configuration
+        if not self.assume_yes:
+            config_workspace = self.user_prompter.prompt_yes_no(
+                "Configure environment for specific ROS 2 workspace?", default=False
+            )
+        else:
+            config_workspace = True
+
         if config_workspace:
             self.resolve_workspace_path()
             self.source_workspace_from_shell_cfg()
 
         # Handle Git configuration
-        git_options = ["global", "local", "skip"]
-        gitconfig_choice = self.user_prompter.prompt_input(
-            "Configure Git hooks globally or locally in workspace repositories?",
-            options=git_options,
-            default="global" if git_options[0] else None,
-        )
-        if gitconfig_choice.lower().startswith("g"):
-            self.install_gitconfig(global_config=True)
-        elif gitconfig_choice.lower().startswith("l"):
-            self.install_gitconfig(global_config=False)
+        if config_workspace and not self.assume_yes:
+            gitconfig_choice = self.user_prompter.prompt_input(
+                "Configure Git hooks globally or locally in workspace repositories?",
+                options=["global", "local", "skip"],
+                default="skip",
+            )
+        elif not config_workspace and not self.assume_yes:
+            gitconfig_choice = self.user_prompter.prompt_input(
+                "Configure Git hooks globally?",
+                options=["global", "skip"],
+                default="skip",
+            )
         else:
-            self.logger.info("Skipping Git hooks configuration as per user choice.")
+            gitconfig_choice = "skip"
+
+        if gitconfig_choice == "global":
+            self.config_gitconfig(mode="global")
+        elif gitconfig_choice == "local":
+            self.config_gitconfig(mode="local")
+        else:
+            self.logger.debug("Skipping Git hooks configuration as per user choice.")
