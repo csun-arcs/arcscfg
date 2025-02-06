@@ -38,11 +38,12 @@ class DotfileManager:
 
         # Create a unified context for template variable substitution
         self.context = {
-            "ARCSCFG_START_BLOCK": ">>> arcscfg >>>",
-            "ARCSCFG_END_BLOCK": "<<< arcscfg <<<",
+            "ARCSCFG_START_BLOCK": "# >>> arcscfg >>>",
+            "ARCSCFG_END_BLOCK": "# <<< arcscfg <<<",
             "ARCSCFG_BASHRC_DIR": str((self.dotfiles_dir / "bashrc").resolve()),
             "ARCSCFG_ZSHRC_DIR": str((self.dotfiles_dir / "zshrc").resolve()),
             "ARCSCFG_GITHOOKS_PATH": str(self.githooks_dir.resolve()),
+            "ARCSCFG_WORKSPACE_SOURCE": "",
             # Add more variables as needed
         }
 
@@ -94,7 +95,7 @@ class DotfileManager:
             # Search for the existing block
             if block_pattern.search(content):
                 # Replace the existing block
-                new_content = block_pattern.sub(template_content, content)
+                new_content = block_pattern.sub(template_content, content).rstrip()
                 self.logger.debug(f"Replaced existing block in {dst}")
             else:
                 # Append the block at the end
@@ -215,6 +216,32 @@ class DotfileManager:
         # Insert the line into the shell configuration file using block markers
         self.handle_shell_configuration(shell_rc_file, line_to_add)
 
+    def source_workspace_from_shell_cfg(self):
+        """Conditionally add workspace sourcing to shell config using template"""
+        if not self.workspace_path:
+            self.logger.error("Workspace path not set")
+            return
+
+        # Determine shell config file
+        shell = Path(os.environ.get("SHELL", "/bin/bash")).name
+        rc_file = Path.home() / (".bashrc" if "bash" in shell else ".zshrc")
+
+        # Create context with optional workspace source line
+        context = {
+            **self.context,
+            "ARCSCFG_WORKSPACE_SOURCE": (
+                f"# Source workspace\nsource {self.workspace_path}/install/setup.bash"
+                if self.user_prompter.prompt_yes_no(
+                    "Source workspace in shell config?", default=False
+                )
+                else "# No workspace sourcing configured"
+            ),
+        }
+
+        # Process template with conditional content
+        template_path = self.dotfiles_dir / rc_file.name
+        self._process_template_with_context(template_path, rc_file, context)
+
     def handle_shell_configuration(self, dst: Path, line_to_add: str):
         """
         Handle inserting or updating the workspace sourcing line in the shell configuration.
@@ -262,6 +289,65 @@ class DotfileManager:
                 file.write(content_to_insert)
             self.logger.info(f"Created new shell configuration file {dst}")
 
+    def update_shell_config(self):
+        """
+        Update the shell configuration file to conditionally source the workspace setup script.
+        Consolidates `source_workspace_from_shell_cfg()` and `handle_shell_configuration()` into one method.
+        """
+        # Determine the shell and corresponding config file
+        shell = Path(os.environ.get("SHELL", "/bin/bash")).name
+        shell_rc_map = {
+            "bash": ".bashrc",
+            "zsh": ".zshrc",
+        }
+        shell_rc_file = Path.home() / shell_rc_map.get(shell, ".bashrc")
+        template_name = shell_rc_file.name
+
+        # Prompt the user for workspace sourcing
+        if not self.assume_yes:
+            source_workspace = self.user_prompter.prompt_yes_no(
+                "Do you want to source the workspace from your shell config?",
+                default=False,
+            )
+        else:
+            source_workspace = False  # Default to not sourcing when assuming yes
+
+        if source_workspace:
+            # Resolve workspace path
+            self.resolve_workspace_path()
+            setup_script_path = self.workspace_path / "install" / "setup.bash"
+
+            if not setup_script_path.exists():
+                self.logger.error(f"Setup script not found at {setup_script_path}")
+                self.logger.debug(
+                    f"Workspace path: {self.workspace_path}, Setup script path: {setup_script_path}"
+                )
+                # Even if the setup.bash doesn't exist, ensure the placeholder is handled
+                self.context["ARCSCFG_WORKSPACE_SOURCE"] = (
+                    "# Workspace sourcing script not found\n"
+                )
+            else:
+                # Update context to include the sourcing line
+                self.context["ARCSCFG_WORKSPACE_SOURCE"] = (
+                    "# Source workspace setup script\nsource {}\n".format(
+                        setup_script_path
+                    )
+                )
+                self.logger.debug(
+                    f"Workspace sourcing line added to context: {self.context['ARCSCFG_WORKSPACE_SOURCE']}"
+                )
+        else:
+            # Update context to omit the sourcing line
+            self.context["ARCSCFG_WORKSPACE_SOURCE"] = (
+                "# Workspace sourcing not configured\n"
+            )
+            self.logger.debug("Workspace sourcing line omitted from context.")
+
+        # Handle updating the shell config
+        src = self.dotfiles_dir / template_name
+        dst = shell_rc_file
+        self.handle_dotfile(template_name, src, dst)
+
     def resolve_workspace_path(self):
         """
         Resolve a given workspace path or get it by prompting the user.
@@ -292,29 +378,19 @@ class DotfileManager:
         Run all the dotfile installation steps.
         """
         # Configure dotfiles
-        if not self.assume_yes:
-            config_dotfiles = self.user_prompter.prompt_yes_no(
-                "Configure dotfiles?", default=False
-            )
-        else:
-            config_dotfiles = True
-
-        if config_dotfiles:
+        if self.user_prompter.prompt_yes_no("Configure dotfiles?", default=False):
             self.config_dotfiles()
 
-        # Prompt user for specific workspace configuration
-        if not self.assume_yes:
-            config_workspace = self.user_prompter.prompt_yes_no(
-                "Configure environment for specific ROS 2 workspace?", default=False
-            )
-        else:
-            config_workspace = True
+        # Configure environment for specific ROS 2 workspace
+        config_workspace = self.user_prompter.prompt_yes_no(
+            "Configure environment for specific ROS 2 workspace?", default=False
+        )
 
         if config_workspace:
             self.resolve_workspace_path()
-            self.source_workspace_from_shell_cfg()
+            self.update_shell_config()
 
-        # Handle Git configuration
+        # Configure git
         if config_workspace and not self.assume_yes:
             gitconfig_choice = self.user_prompter.prompt_input(
                 "Configure Git hooks globally or locally in workspace repositories?",
