@@ -57,15 +57,10 @@ class DotfileManager:
             dst = Path.home() / dotfile
 
             # Prompt the user using UserPrompter
-            if not self.assume_yes:
-                proceed = self.user_prompter.prompt_yes_no(
-                    f"Update {dst}?", default=False
-                )
-                if not proceed:
-                    self.logger.debug(f"Skipping {dst} as per user request.")
-                    continue
-
+            if self.user_prompter.prompt_yes_no(f"Update {dst}?", default=False):
                 self.handle_dotfile(dotfile, src, dst)
+            else:
+                self.logger.debug(f"Skipping {dst} as per user request.")
 
     def handle_dotfile(self, dotfile_name: str, src: Path, dst: Path):
         """
@@ -245,13 +240,10 @@ class DotfileManager:
         template_name = shell_rc_file.name
 
         # Prompt the user for workspace sourcing
-        if not self.assume_yes:
-            source_workspace = self.user_prompter.prompt_yes_no(
-                "Do you want to source the workspace from your shell config?",
-                default=False,
-            )
-        else:
-            source_workspace = False  # Default to not sourcing when assuming yes
+        source_workspace = self.user_prompter.prompt_yes_no(
+            "Source the workspace from your shell config?",
+            default=False,
+        )
 
         if source_workspace:
             # Resolve workspace path
@@ -327,25 +319,24 @@ class DotfileManager:
             "Configure environment for specific ROS 2 workspace?", default=False
         )
 
+        # Update shell config to source workspace
         if config_workspace:
             self.resolve_workspace_path()
             self.update_shell_config()
 
         # Configure git
-        if config_workspace and not self.assume_yes:
+        if config_workspace:
             gitconfig_choice = self.user_prompter.prompt_input(
                 "Configure Git hooks globally or locally in workspace repositories?",
                 options=["global", "local", "skip"],
                 default="skip",
             )
-        elif not config_workspace and not self.assume_yes:
+        else:
             gitconfig_choice = self.user_prompter.prompt_input(
                 "Configure Git hooks globally?",
                 options=["global", "skip"],
                 default="skip",
             )
-        else:
-            gitconfig_choice = "skip"
 
         if gitconfig_choice == "global":
             self.config_gitconfig(mode="global")
