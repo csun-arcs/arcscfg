@@ -16,6 +16,7 @@ class ConfigCommand(BaseCommand):
         # Initialize DotfileManager
         dotfile_manager = DotfileManager(
             logger=self.logger,
+            backer_upper=self.backer_upper,
             workspace_path=self.args.workspace,
             assume_yes=self.args.yes,
         )
