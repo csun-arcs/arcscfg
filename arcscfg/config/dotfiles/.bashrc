@@ -4,5 +4,5 @@ ${ARCSCFG_START_BLOCK}
 # Source arcscfg configurations
 source ${ARCSCFG_BASHRC_DIR}/aliases.sh
 
-${ARCSCFG_WORKSPACE_SOURCE}
+${ARCSCFG_SOURCE_WOKSPACE}
 ${ARCSCFG_END_BLOCK}

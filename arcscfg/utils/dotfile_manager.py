@@ -43,7 +43,7 @@ class DotfileManager:
             "ARCSCFG_BASHRC_DIR": str((self.dotfiles_dir / "bashrc").resolve()),
             "ARCSCFG_ZSHRC_DIR": str((self.dotfiles_dir / "zshrc").resolve()),
             "ARCSCFG_GITHOOKS_PATH": str(self.githooks_dir.resolve()),
-            "ARCSCFG_WORKSPACE_SOURCE": "",
+            "ARCSCFG_SOURCE_WOKSPACE": "",
             # Add more variables as needed
         }
 
@@ -256,22 +256,22 @@ class DotfileManager:
                     f"Workspace path: {self.workspace_path}, Setup script path: {setup_script_path}"
                 )
                 # Even if the setup.bash doesn't exist, ensure the placeholder is handled
-                self.context["ARCSCFG_WORKSPACE_SOURCE"] = (
+                self.context["ARCSCFG_SOURCE_WOKSPACE"] = (
                     "# Workspace sourcing script not found\n"
                 )
             else:
                 # Update context to include the sourcing line
-                self.context["ARCSCFG_WORKSPACE_SOURCE"] = (
+                self.context["ARCSCFG_SOURCE_WOKSPACE"] = (
                     "# Source workspace setup script\nsource {}\n".format(
                         setup_script_path
                     )
                 )
                 self.logger.debug(
-                    f"Workspace sourcing line added to context: {self.context['ARCSCFG_WORKSPACE_SOURCE']}"
+                    f"Workspace sourcing line added to context: {self.context['ARCSCFG_SOURCE_WOKSPACE']}"
                 )
         else:
             # Update context to omit the sourcing line
-            self.context["ARCSCFG_WORKSPACE_SOURCE"] = (
+            self.context["ARCSCFG_SOURCE_WOKSPACE"] = (
                 "# Workspace sourcing not configured\n"
             )
             self.logger.debug("Workspace sourcing line omitted from context.")
