@@ -300,6 +300,10 @@ class DotfileManager:
             "bash": ".bashrc",
             "zsh": ".zshrc",
         }
+        shell_setup_map = {
+            "bash": "setup.bash",
+            "zsh": "setup.zsh",
+        }
         shell_rc_file = Path.home() / shell_rc_map.get(shell, ".bashrc")
         template_name = shell_rc_file.name
 
@@ -315,7 +319,7 @@ class DotfileManager:
         if source_workspace:
             # Resolve workspace path
             self.resolve_workspace_path()
-            setup_script_path = self.workspace_path / "install" / "setup.bash"
+            setup_script_path = self.workspace_path / "install" / shell_setup_map[shell]
 
             if not setup_script_path.exists():
                 self.logger.error(f"Setup script not found at {setup_script_path}")
