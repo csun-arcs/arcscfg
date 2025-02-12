@@ -51,18 +51,18 @@ class DotfileManager:
         """
         Configure dotfiles with their respective handlers.
         """
-        self.logger.info("Installing dotfiles...")
+        self.logger.info("Configuring dotfiles...")
         for dotfile in self.dotfiles:
             src = self.dotfiles_dir / dotfile
             dst = Path.home() / dotfile
 
             # Prompt the user using UserPrompter
             if self.user_prompter.prompt_yes_no(f"Update {dst}?", default=False):
-                self.handle_dotfile(dotfile, src, dst)
+                self._handle_dotfile(dotfile, src, dst)
             else:
                 self.logger.debug(f"Skipping {dst} as per user request.")
 
-    def handle_dotfile(self, dotfile_name: str, src: Path, dst: Path):
+    def _handle_dotfile(self, dotfile_name: str, src: Path, dst: Path):
         """
         Handle generic dotfiles by inserting or updating a template block.
         """
@@ -106,7 +106,7 @@ class DotfileManager:
                 file.write(template_content)
             self.logger.info(f"Installed new dotfile {dst}")
 
-    def handle_gitconfig(self, src: Path, dst: Path):
+    def _handle_gitconfig(self, src: Path, dst: Path):
         """
         Handle the installation of the .gitconfig file by merging configurations.
         """
@@ -145,7 +145,7 @@ class DotfileManager:
 
         self.logger.debug(f"Updated Git configuration at {dst}")
 
-    def config_gitconfig(self, mode: str):
+    def config_git(self, mode: str):
         """
         Configure git config either globally or in local repositories.
 
@@ -155,8 +155,8 @@ class DotfileManager:
         src = self.dotfiles_dir / ".gitconfig"
         if mode == "global":
             dst = Path.home() / ".gitconfig"
-            self.logger.info("Installing Git configuration globally.")
-            self.handle_gitconfig(src, dst)
+            self.logger.info("Configuring Git globally.")
+            self._handle_gitconfig(src, dst)
         elif mode == "local":
             if self.workspace_path:
                 src_dir = self.workspace_path / "src"
@@ -166,17 +166,17 @@ class DotfileManager:
                     git_config_path = repo_dir / ".git" / "config"
                     if git_config_path.exists():
                         self.logger.info(
-                            f"Installing Git configuration for repository: {repo_dir}"
+                            f"Configuring Git for repository: {repo_dir}"
                         )
-                        self.handle_gitconfig(src, git_config_path)
+                        self._handle_gitconfig(src, git_config_path)
             else:
                 self.logger.error("Workspace path has not been set.")
         else:
             self.logger.error(f"Invalid mode '{mode}' for Git configuration.")
 
-    def update_shell_config(self):
+    def config_shell_workspace(self):
         """
-        Update the shell configuration file to conditionally source the workspace setup script.
+        Configure shell to source workspace setup script based on user prompt response.
         """
         # Determine the shell and corresponding config file
         shell = Path(os.environ.get("SHELL", "/bin/bash")).name
@@ -199,7 +199,7 @@ class DotfileManager:
 
         if source_workspace:
             # Resolve workspace path
-            self.resolve_workspace_path()
+            self._resolve_workspace_path()
             setup_script_path = self.workspace_path / "install" / shell_setup_map[shell]
 
             if not setup_script_path.exists():
@@ -231,9 +231,9 @@ class DotfileManager:
         # Handle updating the shell config
         src = self.dotfiles_dir / template_name
         dst = shell_rc_file
-        self.handle_dotfile(template_name, src, dst)
+        self._handle_dotfile(template_name, src, dst)
 
-    def resolve_workspace_path(self):
+    def _resolve_workspace_path(self):
         """
         Resolve a given workspace path or get it by prompting the user.
         """
@@ -248,7 +248,7 @@ class DotfileManager:
                 logger=self.logger,
                 user_prompter=self.user_prompter,
             )
-            self.workspace_path = manager.prompt_for_workspace(
+            self.workspace_path = manager._prompt_for_workspace(
                 default_workspace=None,
                 allow_available=True,
                 allow_create=False,
@@ -273,26 +273,26 @@ class DotfileManager:
 
         # Update shell config to source workspace
         if config_workspace:
-            self.resolve_workspace_path()
-            self.update_shell_config()
+            self._resolve_workspace_path()
+            self.config_shell_workspace()
 
         # Configure git
         if config_workspace:
             gitconfig_choice = self.user_prompter.prompt_input(
-                "Configure Git hooks globally or locally in workspace repositories?",
+                "Configure Git globally or locally in workspace repositories?",
                 options=["global", "local", "skip"],
                 default="skip",
             )
         else:
             gitconfig_choice = self.user_prompter.prompt_input(
-                "Configure Git hooks globally?",
+                "Configure Git globally?",
                 options=["global", "skip"],
                 default="skip",
             )
 
         if gitconfig_choice == "global":
-            self.config_gitconfig(mode="global")
+            self.config_git(mode="global")
         elif gitconfig_choice == "local":
-            self.config_gitconfig(mode="local")
+            self.config_git(mode="local")
         else:
             self.logger.debug("Skipping Git hooks configuration as per user choice.")

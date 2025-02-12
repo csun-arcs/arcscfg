@@ -62,11 +62,11 @@ class DependencyManager:
         self.load_dependencies()
 
         if "apt" in self.dependencies:
-            self.install_apt_packages(self.dependencies["apt"])
+            self._install_apt_packages(self.dependencies["apt"])
         if "pip" in self.dependencies:
-            self.install_pip_packages(self.dependencies["pip"])
+            self._install_pip_packages(self.dependencies["pip"])
 
-    def install_apt_packages(self, packages: List[Any]):
+    def _install_apt_packages(self, packages: List[Any]):
         self.logger.info("Installing apt packages...")
         package_names = []
         for package in packages:
@@ -99,7 +99,7 @@ class DependencyManager:
                 # Decide whether to proceed or exit
                 pass
 
-    def install_pip_packages(self, packages: List[Any]):
+    def _install_pip_packages(self, packages: List[Any]):
         self.logger.info("Installing pip packages...")
         for package in packages:
             if isinstance(package, str):

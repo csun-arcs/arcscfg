@@ -42,7 +42,7 @@ class WorkspaceManager:
         )
         self.recursive_search = recursive_search
 
-    def discover_dependency_files(self) -> List[Path]:
+    def _discover_dependency_files(self) -> List[Path]:
         """Discover all dependency files within each cloned repository in the workspace."""
         if not self.workspace_path:
             self.logger.error("Workspace path is not set.")
@@ -92,7 +92,7 @@ class WorkspaceManager:
                 raise ValueError("Workspace path is not set.")
 
             # Validate workspace path
-            workspace = self.validate_workspace_path(
+            workspace = self._validate_workspace_path(
                 self.workspace_path, allow_create=True
             )
 
@@ -111,10 +111,10 @@ class WorkspaceManager:
                     )
                     raise
 
-            self.validate_workspace_config(config)
+            self._validate_workspace_config(config)
 
             # Validate/create src directory
-            self.validate_src_directory(workspace, allow_create=True)
+            self._validate_src_directory(workspace, allow_create=True)
 
             self.logger.info(
                 f"Setting up workspace at '{workspace}' using config '{self.workspace_config}'"
@@ -124,7 +124,7 @@ class WorkspaceManager:
             self.clone_repositories(workspace, self.workspace_config)
 
             # Discover additional dependency files
-            dependency_files = self.discover_dependency_files()
+            dependency_files = self._discover_dependency_files()
 
             # Clone repositories from each dependency file
             for dep_file in dependency_files:
@@ -143,10 +143,10 @@ class WorkspaceManager:
                 raise ValueError("Workspace path is not set.")
 
             # Validate workspace path
-            workspace = self.validate_workspace_path(self.workspace_path)
+            workspace = self._validate_workspace_path(self.workspace_path)
 
             # Validate src directory
-            self.validate_src_directory(workspace)
+            self._validate_src_directory(workspace)
 
             self.logger.info(f"Updating workspace at '{workspace}'")
 
@@ -160,27 +160,27 @@ class WorkspaceManager:
         """Build the workspace."""
         try:
             # Validate workspace path
-            workspace = self.validate_workspace_path(self.workspace_path)
+            workspace = self._validate_workspace_path(self.workspace_path)
             self.logger.debug(f"Validated workspace path for build: {workspace}")
 
             # Validate src directory
-            self.validate_src_directory(workspace)
+            self._validate_src_directory(workspace)
 
             # Determine the path to setup.bash
             setup_bash_path = workspace / "install" / "setup.bash"
-            default_underlay_path_str = self.parse_setup_bash(setup_bash_path)
+            default_underlay_path_str = self._parse_setup_bash(setup_bash_path)
             default_underlay = (
                 Path(default_underlay_path_str) if default_underlay_path_str else None
             )
 
             # Find and set up underlays
-            underlays = self.find_ros2_underlays([Path("/opt/ros"), Path.home()])
+            underlays = self._find_ros2_underlays([Path("/opt/ros"), Path.home()])
 
             # Remove duplicates and ensure all underlays are resolved
             underlays = list(set(underlays))
 
             # Prompt for underlay
-            underlay = self.prompt_for_underlay(
+            underlay = self._prompt_for_underlay(
                 underlays, default_underlay=default_underlay
             )
 
@@ -191,7 +191,7 @@ class WorkspaceManager:
                     self.logger.debug(f"Sourcing setup file: {setup_file}")
                     if Shell.source_file(setup_file):
                         self.logger.info("Successfully sourced setup file.")
-                        if not self.verify_ros_setup():
+                        if not self._verify_ros_setup():
                             self.logger.warning(
                                 "ROS environment may not be fully configured."
                             )
@@ -214,7 +214,7 @@ class WorkspaceManager:
             self.logger.error(f"Unexpected error: {e}")
             sys.exit(1)
 
-    def validate_workspace_path(
+    def _validate_workspace_path(
         self, workspace_path: Path, allow_create: bool = False
     ) -> Path:
         """Validate that the workspace path is writable."""
@@ -226,7 +226,7 @@ class WorkspaceManager:
             try:
                 workspace_path.mkdir(parents=True, exist_ok=True)
                 self.logger.debug(f"Created workspace directory: {workspace_path}")
-                self.validate_src_directory(workspace_path, allow_create=True)
+                self._validate_src_directory(workspace_path, allow_create=True)
             except Exception as e:
                 raise PermissionError(
                     f"Cannot create workspace directory: {workspace_path}"
@@ -236,7 +236,7 @@ class WorkspaceManager:
         self.logger.debug(f"Workspace path validated: {workspace_path}")
         return workspace_path
 
-    def validate_workspace_config(self, config: dict) -> dict:
+    def _validate_workspace_config(self, config: dict) -> dict:
         """Validate workspace configuration structure."""
         if not isinstance(config, dict):
             raise ValueError(
@@ -264,7 +264,7 @@ class WorkspaceManager:
         self.logger.debug("Workspace configuration validated successfully.")
         return config
 
-    def validate_src_directory(
+    def _validate_src_directory(
         self, workspace_path: Path, allow_create: bool = False
     ) -> Path:
         """Validate that the workspace has a 'src' directory."""
@@ -282,7 +282,7 @@ class WorkspaceManager:
         return src_dir
 
     @staticmethod
-    def infer_default_workspace_path(workspace_config: Path) -> Path:
+    def _infer_default_workspace_path(workspace_config: Path) -> Path:
         """
         Infer a default workspace path based on the workspace config.
 
@@ -341,7 +341,7 @@ class WorkspaceManager:
         )
         return None
 
-    def parse_setup_bash(self, setup_bash_path: Path) -> Optional[str]:
+    def _parse_setup_bash(self, setup_bash_path: Path) -> Optional[str]:
         """
         Parse the setup.bash file to extract the last underlay in the build
         chain (the second-last COLCON_CURRENT_PREFIX entry in the setup file).
@@ -426,7 +426,7 @@ class WorkspaceManager:
             self.logger.error(f"Failed to pull repositories: {e}")
             sys.exit(1)
 
-    def find_available_workspaces(self, home_dir: Path = Path.home()) -> List[Path]:
+    def _find_available_workspaces(self, home_dir: Path = Path.home()) -> List[Path]:
         """Find available ROS 2 workspaces in the home directory."""
         workspaces = []
         naming_pattern = "*_ws"
@@ -461,7 +461,7 @@ class WorkspaceManager:
         self.logger.debug(f"Total workspaces found: {len(workspaces)}")
         return workspaces
 
-    def find_ros2_underlays(self, search_dirs: List[Path] = None) -> List[Path]:
+    def _find_ros2_underlays(self, search_dirs: List[Path] = None) -> List[Path]:
         """Search for ROS 2 installs and workspaces."""
         if search_dirs is None:
             search_dirs = [Path("/opt/ros")]
@@ -503,7 +503,7 @@ class WorkspaceManager:
         self.logger.debug(f"Total underlays found: {len(underlays)}")
         return underlays
 
-    def prompt_for_workspace(
+    def _prompt_for_workspace(
         self,
         default_workspace: Path = None,
         allow_available: bool = True,
@@ -512,7 +512,7 @@ class WorkspaceManager:
         """Prompt the user to select or create a workspace."""
         if self.assume_yes:
             if allow_available:
-                workspaces = self.find_available_workspaces()
+                workspaces = self._find_available_workspaces()
                 if workspaces:
                     selected_workspace = workspaces[0]
                     self.logger.debug(
@@ -530,7 +530,7 @@ class WorkspaceManager:
                 sys.exit(1)
 
         if allow_available:
-            workspaces = self.find_available_workspaces()
+            workspaces = self._find_available_workspaces()
             options = [f"{ws.stem} ('{ws}')" for ws in workspaces]
             options.append(
                 "Create a new workspace"
@@ -586,7 +586,7 @@ class WorkspaceManager:
                 self.logger.debug(f"Selected existing workspace: {workspace}")
             return workspace
 
-    def prompt_for_underlay(
+    def _prompt_for_underlay(
         self,
         underlays: List[Path],
         default_underlay: Optional[Path] = None,
@@ -667,7 +667,7 @@ class WorkspaceManager:
             self.logger.error("Invalid underlay selection.")
             sys.exit(1)
 
-    def verify_ros_setup(self) -> bool:
+    def _verify_ros_setup(self) -> bool:
         """Verify that ROS 2 environment variables are set correctly."""
         required_vars = [
             "ROS_DISTRO",

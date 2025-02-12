@@ -164,10 +164,10 @@ class SetupCommand(BaseCommand):
             self.logger.debug(f"Using provided workspace path: {workspace_path}")
             return workspace_path
         else:
-            default_workspace_path = manager.infer_default_workspace_path(
+            default_workspace_path = manager._infer_default_workspace_path(
                 Path(manager.workspace_config)
             )
-            return manager.prompt_for_workspace(
+            return manager._prompt_for_workspace(
                 default_workspace=default_workspace_path,
                 allow_available=False,
                 allow_create=True,

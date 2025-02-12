@@ -49,7 +49,7 @@ class BuildCommand(BaseCommand):
                 assume_yes=self.args.yes,
                 logger=self.logger,
             )
-            workspace_path = manager.prompt_for_workspace(
+            workspace_path = manager._prompt_for_workspace(
                 default_workspace=None,
                 allow_available=True,
                 allow_create=False,
