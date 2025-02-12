@@ -174,57 +174,9 @@ class DotfileManager:
         else:
             self.logger.error(f"Invalid mode '{mode}' for Git configuration.")
 
-    def handle_shell_configuration(self, dst: Path, line_to_add: str):
-        """
-        Handle inserting or updating the workspace sourcing line in the shell configuration.
-        """
-        start_marker = self.context["ARCSCFG_START_BLOCK"]
-        end_marker = self.context["ARCSCFG_END_BLOCK"]
-
-        # Prepare the content to insert
-        content_to_insert = (
-            f"{start_marker}\n# Added by arcscfg\n{line_to_add}{end_marker}"
-        )
-
-        # Prepare the regex pattern to search for the block
-        block_pattern = re.compile(
-            rf"{re.escape(start_marker)}.*?{re.escape(end_marker)}",
-            re.DOTALL,
-        )
-
-        if dst.exists():
-            self.logger.info(
-                f"{dst} exists. Updating or inserting the workspace sourcing line."
-            )
-            self.backer_upper.backup(dst)
-
-            with dst.open("r") as file:
-                content = file.read()
-
-            # Search for the existing block
-            if block_pattern.search(content):
-                # Replace the existing block
-                new_content = block_pattern.sub(content_to_insert, content)
-                self.logger.debug(f"Replaced existing sourcing line in {dst}")
-            else:
-                # Append the block at the end
-                new_content = content.rstrip() + "\n\n" + content_to_insert
-                self.logger.debug(f"Appended new sourcing line to {dst}")
-
-            with dst.open("w") as file:
-                file.write(new_content)
-            self.logger.info(f"Updated {dst} to source the workspace setup script.")
-
-        else:
-            # Create a new shell config file with the content to insert
-            with dst.open("w") as file:
-                file.write(content_to_insert)
-            self.logger.info(f"Created new shell configuration file {dst}")
-
     def update_shell_config(self):
         """
         Update the shell configuration file to conditionally source the workspace setup script.
-        Consolidates `source_workspace_from_shell_cfg()` and `handle_shell_configuration()` into one method.
         """
         # Determine the shell and corresponding config file
         shell = Path(os.environ.get("SHELL", "/bin/bash")).name
