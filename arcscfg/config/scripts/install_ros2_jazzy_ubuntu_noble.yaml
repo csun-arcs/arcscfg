@@ -39,4 +39,4 @@ steps:
       fi
       rosdep update
 
-  - message: "ROS 2 Jazzy installation complete. Please restart your terminal or run 'source ~/.bashrc' to update your environment."
+  - message: "ROS 2 Jazzy installation complete. Please run 'arcscfg config' to configure your environment."
