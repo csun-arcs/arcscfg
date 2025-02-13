@@ -97,6 +97,12 @@ def main():
         help="Automate the installation of ROS 2.",
     )
     install_parser.add_argument(
+        "-id",
+        "--install-deps",
+        action="store_true",
+        help="Install dependencies.",
+    )
+    install_parser.add_argument(
         "-rd",
         "--ros-distro",
         choices=[
