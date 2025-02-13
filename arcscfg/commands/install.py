@@ -56,6 +56,11 @@ class InstallCommand(BaseCommand):
         # Determine available scripts based on OS and ROS distro
         if platform.system().lower() == "darwin":
             os_name = "macos"
+        elif platform.system().lower() == "linux":
+            if "ubuntu" in platform.uname().version.lower():
+                os_name = "ubuntu"
+            else:
+                os_name = "linux"
         else:
             os_name = sys.platform
 
