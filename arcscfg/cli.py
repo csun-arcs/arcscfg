@@ -112,7 +112,6 @@ def main():
             "jazzy",
             "rolling",
         ],
-        default="jazzy",
         help="ROS 2 distribution to install (e.g., 'iron', 'jazzy').",
     )
     install_parser.add_argument(
