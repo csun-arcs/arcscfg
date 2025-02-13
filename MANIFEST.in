@@ -1,3 +1,3 @@
-include arcscfg/config/workspaces/*.yaml
-include arcscfg/config/dependencies/*.yaml
+recursive-include arcscfg/config/dependencies *
 recursive-include arcscfg/config/dotfiles *
+recursive-include arcscfg/config/workspaces *
