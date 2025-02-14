@@ -1,10 +1,7 @@
 import sys
-import platform
 from pathlib import Path
-from typing import List
 
 from arcscfg.utils.dependency_manager import DependencyManager
-from arcscfg.utils.script_executor import ScriptExecutor
 
 from .base import BaseCommand
 
@@ -30,8 +27,7 @@ class InstallCommand(BaseCommand):
             if self.args.install_ros2 or self.user_prompter.prompt_yes_no("Install ROS 2?", default=False):
                 self.args.ros_distro = self._get_or_prompt_ros_distro()
                 dep_manager.context["ROS_DISTRO"] = self.args.ros_distro
-
-                self._install_ros2(self.args.ros_distro)
+                dep_manager.install_ros2(self.args.ros_distro)
         except Exception as e:
             self.logger.error(f"An error occurred during ROS 2 installation: {e}")
             sys.exit(1)
@@ -41,59 +37,13 @@ class InstallCommand(BaseCommand):
             if self.args.install_deps or self.user_prompter.prompt_yes_no("Install dependencies?", default=False):
                 self.args.ros_distro = self._get_or_prompt_ros_distro()
                 dep_manager.context["ROS_DISTRO"] = self.args.ros_distro
-
-                dependencies_file = self._get_or_prompt_dependencies_file()
-                self.logger.info(f"Installing dependencies from '{dependencies_file}'...")
-                dep_manager.dependencies_file = dependencies_file
-
+                dep_manager.dependencies_file = self._get_or_prompt_dependencies_file()
+                self.logger.info(f"Installing dependencies from '{dep_manager.dependencies_file}'...")
                 dep_manager.install_dependencies()
                 self.logger.info("Dependencies installed successfully.")
         except Exception as e:
             self.logger.error(f"An error occurred during dependency installation: {e}")
             sys.exit(1)
-
-    def _install_ros2(self, ros_distro: str):
-        # Determine available scripts based on OS and ROS distro
-        if platform.system().lower() == "darwin":
-            os_name = "macos"
-        elif platform.system().lower() == "linux":
-            if "ubuntu" in platform.uname().version.lower():
-                os_name = "ubuntu"
-            else:
-                os_name = "linux"
-        else:
-            os_name = sys.platform
-
-        scripts = self._get_available_ros_install_scripts(os_name, ros_distro)
-
-        if not scripts:
-            self.logger.error(f"No installation scripts available for OS: {os_name} and ROS distro: {ros_distro}")
-            sys.exit(1)
-
-        # Prompt user to select a script
-        script_path = self._prompt_script_selection(scripts)
-
-        # Execute the selected script
-        executor = ScriptExecutor(script_path, self.logger)
-        try:
-            executor.execute()
-        except Exception as e:
-            self.logger.error(f"Installation failed: {e}")
-            sys.exit(1)
-
-    def _get_available_ros_install_scripts(self, os_name: str, ros_distro: str) -> List[Path]:
-        scripts_dir = Path(__file__).parent.parent / 'config' / 'scripts'
-        pattern = f"install_ros2_{ros_distro}_{os_name}_*.yaml"
-        return list(scripts_dir.glob(pattern))
-
-    def _prompt_script_selection(self, scripts: List[Path]) -> Path:
-        options = [f"{script.name}" for script in scripts]
-        selection = self.user_prompter.prompt_selection(
-            message="Select an installation script:",
-            options=options,
-            default=1,
-        )
-        return scripts[selection]
 
     def _get_or_prompt_ros_distro(self) -> str:
         """Handle ROS distribution selection with UserPrompter"""
@@ -125,7 +75,7 @@ class InstallCommand(BaseCommand):
     def _get_or_prompt_dependencies_file(self) -> Path:
         """Get dependency file path through UserPrompter"""
         if self.args.dependency_file:
-            dep_file = self._resolve_dependency_file(self.args.dependency_file)
+            dep_file = self._resolve_dependencies_file(self.args.dependency_file)
             if dep_file.is_file():
                 return dep_file
 
@@ -168,8 +118,8 @@ class InstallCommand(BaseCommand):
 
         return custom_path
 
-    def _resolve_dependency_file(self, path_str: str) -> Path:
-        """Resolve dependency file path with multiple fallbacks"""
+    def _resolve_dependencies_file(self, path_str: str) -> Path:
+        """Resolve dependency file path"""
         paths_to_try = [
             Path(path_str).expanduser().resolve(),
             Path(__file__).parent.parent / "config/dependencies" / path_str,

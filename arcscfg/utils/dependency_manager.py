@@ -1,9 +1,13 @@
+import sys
+import yaml
 import subprocess
+import platform
 from pathlib import Path
 from string import Template
 from typing import Any, Dict, List, Optional, Union
 
-import yaml
+from arcscfg.utils.user_prompter import UserPrompter
+from arcscfg.utils.script_executor import ScriptExecutor
 
 from .logger import Logger
 from .shell import Shell
@@ -15,8 +19,9 @@ class DependencyManager:
         dependencies_file: Optional[Union[str, Path]] = None,
         logger: Optional[Logger] = None,
         assume_yes: bool = False,
-        pip_install_method: str = "user",  # Options: 'user', 'pipx', 'venv'
-        context: Optional[Dict[str, str]] = None,  # Context for template substitution
+        pip_install_method: str = "user",
+        context: Optional[Dict[str, str]] = None,
+        user_prompter: Optional[UserPrompter] = None,
     ):
         if dependencies_file:
             self.dependencies_file = Path(dependencies_file)
@@ -27,8 +32,10 @@ class DependencyManager:
         self.pip_install_method = pip_install_method
         self.dependencies = {}  # type: Dict[str, Any]
         self.context = context or {}
+        self.user_prompter = user_prompter or UserPrompter(assume_yes=assume_yes)
 
     def load_dependencies(self):
+        """Load dependencies from dependencies file"""
         if not self.dependencies_file:
             self.logger.error("No dependencies file provided.")
             raise ValueError("Dependencies file not set.")
@@ -56,6 +63,7 @@ class DependencyManager:
         )
 
     def install_dependencies(self):
+        """Install apt/pip dependencies specified in dependencies file"""
         if not self.dependencies_file:
             self.logger.error("No dependencies file provided.")
             raise ValueError("Dependencies file not set.")
@@ -67,6 +75,7 @@ class DependencyManager:
             self._install_pip_packages(self.dependencies["pip"])
 
     def _install_apt_packages(self, packages: List[Any]):
+        """Install apt packages from a given list"""
         self.logger.info("Installing apt packages...")
         package_names = []
         for package in packages:
@@ -100,6 +109,7 @@ class DependencyManager:
                 pass
 
     def _install_pip_packages(self, packages: List[Any]):
+        """Install pip packages from a given list"""
         self.logger.info("Installing pip packages...")
         for package in packages:
             if isinstance(package, str):
@@ -123,7 +133,7 @@ class DependencyManager:
                 elif self.pip_install_method == "pipx":
                     cmd = ["pipx", "install", pkg_full_name]
                 elif self.pip_install_method == "venv":
-                    # Implement virtual environment setup and installation
+                    # TODO: Implement virtual environment setup and installation
                     pass
                 else:
                     self.logger.error(
@@ -136,3 +146,49 @@ class DependencyManager:
                 self.logger.error(f"Failed to install pip package {pkg_full_name}: {e}")
                 # Decide whether to continue or stop on error
                 continue
+
+    def install_ros2(self, ros_distro: str):
+        """Install given ROS 2 distro using available OS-specific install scripts"""
+        # Determine available scripts based on OS and ROS distro
+        if platform.system().lower() == "darwin":
+            os_name = "macos"
+        elif platform.system().lower() == "linux":
+            if "ubuntu" in platform.uname().version.lower():
+                os_name = "ubuntu"
+            else:
+                os_name = "linux"
+        else:
+            os_name = sys.platform
+
+        scripts = self._get_available_ros_install_scripts(os_name, ros_distro)
+
+        if not scripts:
+            self.logger.error(f"No installation scripts available for OS: {os_name} and ROS distro: {ros_distro}")
+            sys.exit(1)
+
+        # Prompt user to select a script
+        script_path = self._prompt_script_selection(scripts)
+
+        # Execute the selected script
+        executor = ScriptExecutor(script_path, self.logger)
+        try:
+            executor.execute()
+        except Exception as e:
+            self.logger.error(f"Installation failed: {e}")
+            sys.exit(1)
+
+    def _get_available_ros_install_scripts(self, os_name: str, ros_distro: str) -> List[Path]:
+        """Get available ROS 2 install scripts for given OS/ROS distro"""
+        scripts_dir = Path(__file__).parent.parent / 'config' / 'scripts'
+        pattern = f"install_ros2_{ros_distro}_{os_name}_*.yaml"
+        return list(scripts_dir.glob(pattern))
+
+    def _prompt_script_selection(self, scripts: List[Path]) -> Path:
+        """Prompt user for install script given list of script paths"""
+        options = [f"{script.name}" for script in scripts]
+        selection = self.user_prompter.prompt_selection(
+            message="Select an installation script:",
+            options=options,
+            default=1,
+        )
+        return scripts[selection]
