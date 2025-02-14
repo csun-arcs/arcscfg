@@ -73,6 +73,10 @@ class DependencyManager:
             self._install_apt_packages(self.dependencies["apt"])
         if "pip" in self.dependencies:
             self._install_pip_packages(self.dependencies["pip"])
+        if "brew" in self.dependencies:
+            self._install_brew_packages(self.dependencies["brew"])
+        if "homebrew" in self.dependencies:
+            self._install_brew_packages(self.dependencies["homebrew"])
 
     def _install_apt_packages(self, packages: List[Any]):
         """Install apt packages from a given list"""
@@ -95,7 +99,6 @@ class DependencyManager:
                 Shell.run_command(cmd, verbose=True)
             except subprocess.CalledProcessError as e:
                 self.logger.error(f"Failed to update apt package index: {e}")
-                # Decide whether to proceed or exit
                 pass
 
             # Install packages
@@ -146,6 +149,45 @@ class DependencyManager:
                 self.logger.error(f"Failed to install pip package {pkg_full_name}: {e}")
                 # Decide whether to continue or stop on error
                 continue
+
+
+    def _install_brew_packages(self, packages: List[Any]):
+        """Install homebrew packages from a given list"""
+        self.logger.info("Installing homebrew packages...")
+        package_names = []
+        for package in packages:
+            if isinstance(package, str):
+                # Simple package name without version
+                packages.append(package)
+            elif isinstance(package, dict):
+                # Package with version specified
+                if len(package) != 1:
+                    self.logger.warning(f"Invalid homebrew package format: {package}")
+                    continue
+                pkg_name, pkg_version = next(iter(package.items()))
+                package_names.append(f"{pkg_name}@{pkg_version}")
+            else:
+                self.logger.warning(f"Invalid homebrew package format: {package}")
+                continue
+
+        if package_names:
+            # Update package index
+            self.logger.info("Updating brew package index...")
+            try:
+                cmd = ["brew", "update"]
+                Shell.run_command(cmd, verbose=True)
+            except subprocess.CalledProcessError as e:
+                self.logger.error(f"Failed to update brew package index: {e}")
+                pass
+
+            # Install packages
+            cmd = ["brew", "install"] + package_names
+            self.logger.info(f"Installing brew packages: {', '.join(package_names)}")
+            try:
+                Shell.run_command(cmd, verbose=True)
+            except subprocess.CalledProcessError as e:
+                self.logger.error(f"Failed to install brew packages: {e}")
+                pass
 
     def install_ros2(self, ros_distro: str):
         """Install given ROS 2 distro using available OS-specific install scripts"""
