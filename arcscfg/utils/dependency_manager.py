@@ -1,9 +1,13 @@
+import sys
+import yaml
 import subprocess
+import platform
 from pathlib import Path
 from string import Template
 from typing import Any, Dict, List, Optional, Union
 
-import yaml
+from arcscfg.utils.user_prompter import UserPrompter
+from arcscfg.utils.script_executor import ScriptExecutor
 
 from .logger import Logger
 from .shell import Shell
@@ -15,8 +19,9 @@ class DependencyManager:
         dependencies_file: Optional[Union[str, Path]] = None,
         logger: Optional[Logger] = None,
         assume_yes: bool = False,
-        pip_install_method: str = "user",  # Options: 'user', 'pipx', 'venv'
-        context: Optional[Dict[str, str]] = None,  # Context for template substitution
+        pip_install_method: str = "user",
+        context: Optional[Dict[str, str]] = None,
+        user_prompter: Optional[UserPrompter] = None,
     ):
         if dependencies_file:
             self.dependencies_file = Path(dependencies_file)
@@ -27,8 +32,10 @@ class DependencyManager:
         self.pip_install_method = pip_install_method
         self.dependencies = {}  # type: Dict[str, Any]
         self.context = context or {}
+        self.user_prompter = user_prompter or UserPrompter(assume_yes=assume_yes)
 
     def load_dependencies(self):
+        """Load dependencies from dependencies file"""
         if not self.dependencies_file:
             self.logger.error("No dependencies file provided.")
             raise ValueError("Dependencies file not set.")
@@ -56,6 +63,7 @@ class DependencyManager:
         )
 
     def install_dependencies(self):
+        """Install apt/pip dependencies specified in dependencies file"""
         if not self.dependencies_file:
             self.logger.error("No dependencies file provided.")
             raise ValueError("Dependencies file not set.")
@@ -67,6 +75,7 @@ class DependencyManager:
             self._install_pip_packages(self.dependencies["pip"])
 
     def _install_apt_packages(self, packages: List[Any]):
+        """Install apt packages from a given list"""
         self.logger.info("Installing apt packages...")
         package_names = []
         for package in packages:
@@ -100,6 +109,7 @@ class DependencyManager:
                 pass
 
     def _install_pip_packages(self, packages: List[Any]):
+        """Install pip packages from a given list"""
         self.logger.info("Installing pip packages...")
         for package in packages:
             if isinstance(package, str):
@@ -123,7 +133,7 @@ class DependencyManager:
                 elif self.pip_install_method == "pipx":
                     cmd = ["pipx", "install", pkg_full_name]
                 elif self.pip_install_method == "venv":
-                    # Implement virtual environment setup and installation
+                    # TODO: Implement virtual environment setup and installation
                     pass
                 else:
                     self.logger.error(
@@ -138,108 +148,47 @@ class DependencyManager:
                 continue
 
     def install_ros2(self, ros_distro: str):
-        """
-        Install the specified ROS 2 distribution.
-
-        Args:
-            ros_distro (str): The ROS 2 distribution to install (e.g., 'foxy',
-            'galactic', 'humble').
-        """
-        self.logger.info(f"Starting installation of ROS 2 '{ros_distro}'...")
-
-        # Check if ROS 2 is already installed
-        if self._is_ros2_installed(ros_distro):
-            self.logger.info(f"ROS 2 distribution '{ros_distro}' is already installed.")
-            return
-
-        try:
-            # Step 1: Add the ROS 2 apt repository and keys
-            self._add_ros2_repository()
-
-            # Step 2: Install the ROS 2 packages
-            ros_package = f"ros-{ros_distro}-desktop"
-            self.logger.info(f"Installing ROS 2 package: {ros_package}")
-            cmd = ["sudo", "apt-get", "install", "-y", ros_package]
-            Shell.run_command(cmd, verbose=True)
-
-            # Step 3: Initialize rosdep
-            self._initialize_rosdep()
-
-            self.logger.info(f"ROS 2 '{ros_distro}' installed successfully.")
-        except Exception as e:
-            self.logger.error(f"Failed to install ROS 2 '{ros_distro}': {e}")
-            raise
-
-    def _add_ros2_repository(self):
-        """
-        Add the ROS 2 apt repository and keys to the system.
-        """
-        self.logger.info("Adding ROS 2 apt repository and keys...")
-        # Update the package index
-        Shell.run_command(["sudo", "apt-get", "update"], verbose=True)
-
-        # Install curl if not installed
-        Shell.run_command(
-            ["sudo", "apt-get", "install", "-y", "curl", "gnupg2", "lsb-release"],
-            verbose=True,
-        )
-
-        # Add the ROS 2 GPG key
-        Shell.run_command(
-            [
-                "sudo",
-                "curl",
-                "-sSL",
-                "https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc",
-                "-o",
-                "/usr/share/keyrings/ros-archive-keyring.gpg",
-            ],
-            verbose=True,
-        )
-
-        # Add the ROS 2 apt repository
-        distro_codename = Shell.run_command(
-            ["lsb_release", "-cs"], capture_output=True, text=True
-        ).stdout.strip()
-
-        repo_entry = (
-            f"deb [arch=$(dpkg --print-architecture) "
-            f"signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] "
-            f"http://packages.ros.org/ros2/ubuntu {distro_codename} main"
-        )
-
-        cmd = (
-            f'echo "{repo_entry}" | '
-            f"sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null"
-        )
-        Shell.run_command(cmd, shell=True, verbose=True)
-
-        # Update the package index again
-        Shell.run_command(["sudo", "apt-get", "update"], verbose=True)
-
-    def _initialize_rosdep(self):
-        """
-        Initialize rosdep for dependency management.
-        """
-        self.logger.info("Initializing rosdep...")
-        try:
-            Shell.run_command(["sudo", "rosdep", "init"], verbose=True)
-        except subprocess.CalledProcessError as e:
-            if "rosdep already initialized" in e.stderr.lower():
-                self.logger.info("rosdep is already initialized.")
+        """Install given ROS 2 distro using available OS-specific install scripts"""
+        # Determine available scripts based on OS and ROS distro
+        if platform.system().lower() == "darwin":
+            os_name = "macos"
+        elif platform.system().lower() == "linux":
+            if "ubuntu" in platform.uname().version.lower():
+                os_name = "ubuntu"
             else:
-                raise e
-        Shell.run_command(["rosdep", "update"], verbose=True)
+                os_name = "linux"
+        else:
+            os_name = sys.platform
 
-    def _is_ros2_installed(self, ros_distro: str) -> bool:
-        """
-        Check if the ROS 2 distribution is already installed.
+        scripts = self._get_available_ros_install_scripts(os_name, ros_distro)
 
-        Args:
-            ros_distro (str): The ROS 2 distribution to check.
+        if not scripts:
+            self.logger.error(f"No installation scripts available for OS: {os_name} and ROS distro: {ros_distro}")
+            sys.exit(1)
 
-        Returns:
-            bool: True if installed, False otherwise.
-        """
-        ros_version_file = Path(f"/opt/ros/{ros_distro}/setup.bash")
-        return ros_version_file.exists()
+        # Prompt user to select a script
+        script_path = self._prompt_script_selection(scripts)
+
+        # Execute the selected script
+        executor = ScriptExecutor(script_path, self.logger)
+        try:
+            executor.execute()
+        except Exception as e:
+            self.logger.error(f"Installation failed: {e}")
+            sys.exit(1)
+
+    def _get_available_ros_install_scripts(self, os_name: str, ros_distro: str) -> List[Path]:
+        """Get available ROS 2 install scripts for given OS/ROS distro"""
+        scripts_dir = Path(__file__).parent.parent / 'config' / 'scripts'
+        pattern = f"install_ros2_{ros_distro}_{os_name}_*.yaml"
+        return list(scripts_dir.glob(pattern))
+
+    def _prompt_script_selection(self, scripts: List[Path]) -> Path:
+        """Prompt user for install script given list of script paths"""
+        options = [f"{script.name}" for script in scripts]
+        selection = self.user_prompter.prompt_selection(
+            message="Select an installation script:",
+            options=options,
+            default=1,
+        )
+        return scripts[selection]

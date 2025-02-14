@@ -22,37 +22,30 @@ class InstallCommand(BaseCommand):
             pip_install_method=self.args.pip_install_method or "user",
         )
 
+        # Handle ROS 2 installation
         try:
-            # Handle ROS 2 installation
-            if self.args.install_ros2:
-                ros_distro = self._prompt_ros_distro()
-                dep_manager.context["ROS_DISTRO"] = ros_distro
-                self._install_ros2(ros_distro)
-            else:
-                if not self.args.yes:
-                    install_ros2 = self.user_prompter.prompt_yes_no(
-                        "Do you want to install ROS 2?", default=False
-                    )
-                    if install_ros2:
-                        ros_distro = self._prompt_ros_distro()
-                        dep_manager.context["ROS_DISTRO"] = ros_distro
-                        self._install_ros2(ros_distro)
+            if self.args.install_ros2 or self.user_prompter.prompt_yes_no("Install ROS 2?", default=False):
+                self.args.ros_distro = self._get_or_prompt_ros_distro()
+                dep_manager.context["ROS_DISTRO"] = self.args.ros_distro
+                dep_manager.install_ros2(self.args.ros_distro)
         except Exception as e:
             self.logger.error(f"An error occurred during ROS 2 installation: {e}")
             sys.exit(1)
 
+        # Handle dependencies installation
         try:
-            dependencies_file = self._get_or_prompt_dependencies_file()
-            self.logger.info(f"Installing dependencies from '{dependencies_file}'...")
-
-            dep_manager.dependencies_file = dependencies_file
-            dep_manager.install_dependencies()
-            self.logger.info("Dependencies installed successfully.")
+            if self.args.install_deps or self.user_prompter.prompt_yes_no("Install dependencies?", default=False):
+                self.args.ros_distro = self._get_or_prompt_ros_distro()
+                dep_manager.context["ROS_DISTRO"] = self.args.ros_distro
+                dep_manager.dependencies_file = self._get_or_prompt_dependencies_file()
+                self.logger.info(f"Installing dependencies from '{dep_manager.dependencies_file}'...")
+                dep_manager.install_dependencies()
+                self.logger.info("Dependencies installed successfully.")
         except Exception as e:
             self.logger.error(f"An error occurred during dependency installation: {e}")
             sys.exit(1)
 
-    def _prompt_ros_distro(self) -> str:
+    def _get_or_prompt_ros_distro(self) -> str:
         """Handle ROS distribution selection with UserPrompter"""
         available_distros = [
             "ardent",
@@ -68,36 +61,21 @@ class InstallCommand(BaseCommand):
             "rolling",
         ]
 
-        default_index = (
-            available_distros.index(self.args.ros_distro)
-            if self.args.ros_distro in available_distros
-            else 9
-        )  # Default to 'jazzy'
+        if self.args.ros_distro and self.args.ros_distro in available_distros:
+            return self.args.ros_distro
 
         selection = self.user_prompter.prompt_selection(
-            message="Select a ROS 2 distribution to install:",
+            message="Select a ROS 2 distribution:",
             options=available_distros,
-            default=default_index + 1,  # 1-based index for display
+            default=available_distros.index("jazzy") + 1,  # 1-based index for display
         )
 
         return available_distros[selection]
 
-    def _install_ros2(self, ros_distro: str):
-        """Handle ROS 2 installation"""
-        self.logger.info(f"Installing ROS 2 distribution: {ros_distro}")
-        dep_manager = DependencyManager(
-            dependencies_file=None,
-            logger=self.logger,
-            assume_yes=self.args.yes,
-            pip_install_method="user",
-            context={"ROS_DISTRO": ros_distro},
-        )
-        dep_manager.install_ros2(ros_distro)
-
     def _get_or_prompt_dependencies_file(self) -> Path:
         """Get dependency file path through UserPrompter"""
         if self.args.dependency_file:
-            dep_file = self._resolve_dependency_file(self.args.dependency_file)
+            dep_file = self._resolve_dependencies_file(self.args.dependency_file)
             if dep_file.is_file():
                 return dep_file
 
@@ -140,8 +118,8 @@ class InstallCommand(BaseCommand):
 
         return custom_path
 
-    def _resolve_dependency_file(self, path_str: str) -> Path:
-        """Resolve dependency file path with multiple fallbacks"""
+    def _resolve_dependencies_file(self, path_str: str) -> Path:
+        """Resolve dependency file path"""
         paths_to_try = [
             Path(path_str).expanduser().resolve(),
             Path(__file__).parent.parent / "config/dependencies" / path_str,
