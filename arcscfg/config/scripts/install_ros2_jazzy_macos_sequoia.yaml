@@ -1,20 +1,14 @@
 name: Install ROS 2 Jazzy on macOS Sequoia
 description: |
-  This script installs ROS 2 Jazzy on macOS Sequoia.
+  This script installs ROS 2 Jazzy natively from source on macOS Sequoia.
 os: macos
 ros_distro: jazzy
 steps:
   - message: "Updating Homebrew..."
-    command: "echo brew update"
-  - message: "Installing prerequisites..."
-    commands:
-      - "echo brew install python3"
-      - "echo brew install cmake"
-  - message: "Installing ROS 2 Jazzy..."
-    script: |
-      #!/bin/bash
-      echo set -e
-      # Add ROS 2 tap and install
-      echo brew tap ros/dashing
-      echo brew install ros-dashing-desktop
+    command: "brew update"
+  - message: "Installing yq via Homebrew..."
+    command: "brew install yq"
+  - message: "Installing ROS 2 Homebrew dependencies..."
+    command: |
+      yq -r '.brew[] | (select(. | type == "!!map") | to_entries | map("\(.key)@\(.value)") | join(" ")) // (select(. | type == "!!str") | .)' arcscfg/config/dependencies/ros2_jazzy_macos_sequoia.yaml | xargs brew install
   - message: "Installation complete."
