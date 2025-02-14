@@ -1,0 +1,25 @@
+---
+brew:
+  - asio
+  - assimp
+  - bison
+  - bullet
+  - cmake
+  - console_bridge
+  - cppcheck
+  - cunit
+  - eigen
+  - freetype
+  - graphviz
+  - opencv
+  - openssl
+  - orocos-kdl
+  - pcre
+  - poco
+  - pyqt: 5
+  - python: 3.11
+  - qt: 5
+  - sip
+  - spdlog
+  - tinyxml
+  - tinyxml2
