@@ -10,5 +10,5 @@ steps:
     command: "brew install yq"
   - message: "Installing ROS 2 Homebrew dependencies..."
     command: |
-      yq -r '.brew[] | (select(. | type == "!!map") | to_entries | map("\(.key)@\(.value)") | join(" ")) // (select(. | type == "!!str") | .)' arcscfg/config/dependencies/ros2_jazzy_macos_sequoia.yaml | xargs brew install
+      yq -r '.brew[] | (select(. | type == "!!map") | to_entries | map("\(.key)@\(.value)") | join(" ")) // (select(. | type == "!!str") | .)' ${ARCSCFG_ROOT}/arcscfg/config/dependencies/ros2_jazzy_macos_sequoia.yaml | xargs brew install
   - message: "Installation complete."

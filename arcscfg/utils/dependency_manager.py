@@ -212,7 +212,7 @@ class DependencyManager:
         script_path = self._prompt_script_selection(scripts)
 
         # Execute the selected script
-        executor = ScriptExecutor(script_path, self.logger)
+        executor = ScriptExecutor(script_path, self.logger, self.context)
         try:
             executor.execute()
         except Exception as e:

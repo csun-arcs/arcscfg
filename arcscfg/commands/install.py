@@ -20,6 +20,9 @@ class InstallCommand(BaseCommand):
             logger=self.logger,
             assume_yes=self.args.yes,
             pip_install_method=self.args.pip_install_method or "user",
+            context={
+                "ARCSCFG_ROOT": str(Path(__file__).parent.parent.parent.resolve())
+            },
         )
 
         # Handle ROS 2 installation
