@@ -69,11 +69,38 @@ class ScriptExecutor:
 
     def run_script(self, script_content: str):
         """
-        Execute a multi-line script.
+        Execute a multi-line script with proper shell handling.
         """
         self.logger.debug(f"Running script:\n{script_content}")
+        
+        lines = script_content.strip().splitlines()
+        if not lines:
+            self.logger.warning("Empty script content provided.")
+            return
+
+        # Detect shebang
+        first_line = lines[0].strip()
+        if first_line.startswith("#!"):
+            shell_path = first_line[2:].strip()
+            script_body = "\n".join(lines[1:])
+            self.logger.debug(f"Detected shebang: {shell_path}")
+        else:
+            # Default to the user's preferred shell
+            shell_path = Shell.get_user_shell()
+            script_body = script_content
+            self.logger.debug(f"No shebang detected. Using default shell: {shell_path}")
+
+        if not shell_path:
+            self.logger.error("No shell executable found. Cannot execute script.")
+            raise ValueError("Shell executable not determined.")
+
+        # Execute the script using the detected shell
         try:
-            Shell.run_command(script_content, shell=True, verbose=True)
+            Shell.run_command(
+                [shell_path, "-c", script_body],
+                shell=False,  # We are explicitly specifying the shell
+                verbose=True
+            )
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"Script failed: {e}")
+            self.logger.error(f"Script execution failed: {e}")
             raise
