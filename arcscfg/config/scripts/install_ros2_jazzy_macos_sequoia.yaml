@@ -11,4 +11,42 @@ steps:
   - message: "Installing ROS 2 Homebrew dependencies..."
     command: |
       yq -r '.brew[] | (select(. | type == "!!map") | to_entries | map("\(.key)@\(.value)") | join(" ")) // (select(. | type == "!!str") | .)' ${ARCSCFG_ROOT}/arcscfg/config/dependencies/ros2_jazzy_macos_sequoia.yaml | xargs brew install
+  - message: "Installing pyenv, pyenv-virtualenv via Homebrew..."
+    command: "brew install pyenv pyenv-virtualenv"
+  - message: "Setting up a ROS 2 Jazzy pyenv virtual environment..."
+    script: |
+      #!/bin/zsh
+      set -e  # Exit immediately if a command fails
+      # set -x  # Enable script debugging
+
+      # Initialize pyenv
+      eval "$(pyenv init -)"
+      eval "$(pyenv virtualenv-init -)"
+
+      # Install a specific Python version (if not already installed)
+      if ! pyenv versions | grep -q "3.11.11"; then
+          pyenv install -f 3.11.11
+      fi
+
+      # Create the virtual environment
+      if ! pyenv virtualenvs | grep -q "ros2_jazzy"; then
+          pyenv virtualenv 3.11.11 ros2_jazzy
+      fi
+
+      echo "pyenv virtual environment 'ros2_jazzy' is set up successfully."
+  - message: "Installing ROS 2 pip dependencies..."
+    script: |
+      #!/bin/zsh
+      set -e  # Exit immediately if a command fails
+      # set -x  # Enable script debugging
+
+      # Initialize pyenv
+      eval "$(pyenv init -)"
+      eval "$(pyenv virtualenv-init -)"
+
+      # Activate the virtual environment
+      pyenv activate ros2_jazzy
+
+      # Install dependencies
+      yq -r '.pip[] | (select(. | type == "!!map") | to_entries | map("\(.key)==\(.value)") | join(" ")) // (select(. | type == "!!str") | .)' ${ARCSCFG_ROOT}/arcscfg/config/dependencies/ros2_jazzy_macos_sequoia.yaml | xargs python3 -m pip install -U
   - message: "Installation complete."
