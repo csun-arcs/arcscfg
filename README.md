@@ -35,7 +35,7 @@ Before installing =arcscfg=, ensure your system meets the following requirements
 
 It's recommended to use a virtual environment to avoid conflicts with other Python packages.
 
-[venv](https://docs.python.org/3/library/venv.html), [virtualenv](https://virtualenv.pypa.io/en/latest/user_guide.html), [virtualenvwrapper](https://pypi.org/project/virtualenvwrapper/), [pipenv](https://pipenv.pypa.io/en/latest/) and [pyenv](https://python.land/virtual-environments/pyenv) are all good options for this.
+[venv](https://docs.python.org/3/library/venv.html), [virtualenv](https://virtualenv.pypa.io/en/latest/user_guide.html), [virtualenvwrapper](https://pypi.org/project/virtualenvwrapper/), [pipenv](https://pipenv.pypa.io/en/latest/) and [pyenv](https://python.land/virtual-environments/pyenv) / [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv) are all good options for this.
 
 Here is an example using `venv`:
 
