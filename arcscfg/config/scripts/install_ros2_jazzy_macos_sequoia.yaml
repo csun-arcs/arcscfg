@@ -35,7 +35,8 @@ steps:
   - message: "Installing pyenv, pyenv-virtualenv via Homebrew..."
     command: "brew install pyenv pyenv-virtualenv"
 
-  - message: "Setting up a ROS 2 Jazzy pyenv virtual environment..."
+  - prompt: "Set up a ROS 2 Jazzy pyenv virtual environment?"
+    message: "Setting up a ROS 2 Jazzy pyenv virtual environment..."
     script: |
       #!/bin/zsh
       set -e  # Exit immediately if a command fails
@@ -57,7 +58,8 @@ steps:
 
       echo "pyenv virtual environment 'ros2_jazzy' is set up successfully."
 
-  - message: "Installing ROS 2 Jazzy pip dependencies..."
+  - prompt: "Install ROS 2 Jazzy pip dependencies?"
+    message: "Installing ROS 2 Jazzy pip dependencies..."
     script: |
       #!/bin/zsh
       set -e  # Exit immediately if a command fails
@@ -73,7 +75,8 @@ steps:
       # Install dependencies
       yq -r '.pip[] | (select(. | type == "!!map") | to_entries | map("\(.key)==\(.value)") | join(" ")) // (select(. | type == "!!str") | .)' ${ARCSCFG_ROOT}/arcscfg/config/dependencies/ros2_jazzy_macos_sequoia.yaml | xargs python3 -m pip install -U
 
-  - message: "Cloning ROS 2 Jazzy source repositories..."
+  - prompt: "Clone ROS 2 Jazzy source repositories?"
+    message: "Cloning ROS 2 Jazzy source repositories..."
     script: |
       #!/bin/zsh
       set -e  # Exit immediately if a command fails
@@ -92,7 +95,8 @@ steps:
       # Import ROS 2 source repositories
       vcs import --force --shallow --retry 0 --input https://raw.githubusercontent.com/ros2/ros2/${ARCSCFG_ROS_SOURCE_REF}/ros2.repos src
 
-  - message: "Building ROS 2 Jazzy pre-patch workspace (NOTE: Build errors are normal here)..."
+  - prompt: "Build ROS 2 Jazzy pre-patch workspace?"
+    message: "Building ROS 2 Jazzy pre-patch workspace (NOTE: Build errors are normal here)..."
     script: |
       #!/bin/zsh
       set -e  # Exit immediately if a command fails
@@ -125,7 +129,8 @@ steps:
              --packages-skip-by-dep python_qt_binding --packages-up-to cyclonedds \
              --event-handlers console_cohesion+ || true
 
-  - message: "Installing ROS 2 Jazzy workspace patches..."
+  - prompt: "Apply ROS 2 Jazzy workspace patches?"
+    message: "Applying ROS 2 Jazzy workspace patches..."
     script: |
       #!/bin/zsh
       set -e  # Exit immediately if a command fails
@@ -199,7 +204,8 @@ steps:
           rm -rf src/eclipse-cyclonedds
       fi
 
-  - message: "Building ROS 2 Jazzy workspace (this might take a while - go grab a coffee)..."
+  - prompt: "Build ROS 2 Jazzy workspace?"
+    message: "Building ROS 2 Jazzy workspace (this might take a while - go grab a coffee)..."
     script: |
       #!/bin/zsh
       set -e  # Exit immediately if a command fails
