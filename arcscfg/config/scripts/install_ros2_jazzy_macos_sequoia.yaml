@@ -1,18 +1,29 @@
 name: Install ROS 2 Jazzy on macOS Sequoia
 description: |
   This script installs ROS 2 Jazzy natively from source on macOS Sequoia.
+
+  Heavily inspired by:
+    https://github.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon
+
 os: macos
 ros_distro: jazzy
 steps:
+  - message: "Creating ROS 2 Jazzy source workspace..."
+    command: 'mkdir -p "${ARCSCFG_ROS_SOURCE_WORKSPACE_PATH}/src"'
+
   - message: "Updating Homebrew..."
     command: "brew update"
+
   - message: "Installing yq via Homebrew..."
     command: "brew install yq"
+
   - message: "Installing ROS 2 Homebrew dependencies..."
     command: |
       yq -r '.brew[] | (select(. | type == "!!map") | to_entries | map("\(.key)@\(.value)") | join(" ")) // (select(. | type == "!!str") | .)' ${ARCSCFG_ROOT}/arcscfg/config/dependencies/ros2_jazzy_macos_sequoia.yaml | xargs brew install
+
   - message: "Installing pyenv, pyenv-virtualenv via Homebrew..."
     command: "brew install pyenv pyenv-virtualenv"
+
   - message: "Setting up a ROS 2 Jazzy pyenv virtual environment..."
     script: |
       #!/bin/zsh
@@ -34,6 +45,7 @@ steps:
       fi
 
       echo "pyenv virtual environment 'ros2_jazzy' is set up successfully."
+
   - message: "Installing ROS 2 Jazzy pip dependencies..."
     script: |
       #!/bin/zsh
@@ -49,4 +61,176 @@ steps:
 
       # Install dependencies
       yq -r '.pip[] | (select(. | type == "!!map") | to_entries | map("\(.key)==\(.value)") | join(" ")) // (select(. | type == "!!str") | .)' ${ARCSCFG_ROOT}/arcscfg/config/dependencies/ros2_jazzy_macos_sequoia.yaml | xargs python3 -m pip install -U
+
+  - message: "Cloning ROS 2 Jazzy source repositories..."
+    script: |
+      #!/bin/zsh
+      set -e  # Exit immediately if a command fails
+      # set -x  # Enable script debugging
+
+      # Initialize pyenv
+      eval "$(pyenv init -)"
+      eval "$(pyenv virtualenv-init -)"
+
+      # Activate the virtual environment
+      pyenv activate ros2_jazzy
+
+      # Change directory to ROS 2 source workspace
+      cd "${ARCSCFG_ROS_SOURCE_WORKSPACE_PATH}"
+
+      # Import ROS 2 source repositories
+      vcs import --force --shallow --retry 0 --input https://raw.githubusercontent.com/ros2/ros2/${ARCSCFG_ROS_SOURCE_REF}/ros2.repos src
+
+  - message: "Building ROS 2 Jazzy pre-patch workspace (NOTE: Build errors are normal here)..."
+    script: |
+      #!/bin/zsh
+      set -e  # Exit immediately if a command fails
+      # set -x  # Enable script debugging
+
+      # Initialize pyenv
+      eval "$(pyenv init -)"
+      eval "$(pyenv virtualenv-init -)"
+
+      # Activate the virtual environment
+      pyenv activate ros2_jazzy
+
+      # Change directory to ROS 2 source workspace
+      cd "${ARCSCFG_ROS_SOURCE_WORKSPACE_PATH}"
+
+      # Set Environment Variables of Brew packages
+      echo -e "\033[36m> Setting Environment Variables of Brew packages...(OPENSSL_ROOT_DIR, CMAKE_PREFIX_PATH, PATH)\033[0m"
+      # shellcheck disable=SC2155
+      export OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)
+      # shellcheck disable=SC2155
+      export CMAKE_PREFIX_PATH=$(brew --prefix qt@5)/lib:$(brew --prefix qt@5)/lib/cmake:/opt/homebrew/opt:${CMAKE_PREFIX_PATH}
+      # shellcheck disable=SC2155
+      export PATH=$PATH:$(brew --prefix qt@5)/bin
+      # Disable notification error on mac
+      export COLCON_EXTENSION_BLOCKLIST=colcon_core.event_handler.desktop_notification
+
+      # Build workspace up to cyclonedds
+      python3 -m colcon build --symlink-install --cmake-args -DBUILD_TESTING=OFF -Wno-dev \
+             -Wno-sign-conversion -Wno-infinite-recursion \
+             --packages-skip-by-dep python_qt_binding --packages-up-to cyclonedds \
+             --event-handlers console_cohesion+ || true
+
+  - message: "Installing ROS 2 Jazzy workspace patches..."
+    script: |
+      #!/bin/zsh
+      set -e  # Exit immediately if a command fails
+      # set -x  # Enable script debugging
+
+      # Initialize pyenv
+      eval "$(pyenv init -)"
+      eval "$(pyenv virtualenv-init -)"
+
+      # Activate the virtual environment
+      pyenv activate ros2_jazzy
+
+      # Change directory to ROS 2 source workspace
+      cd "${ARCSCFG_ROS_SOURCE_WORKSPACE_PATH}"
+
+      # Apply patches for cyclonedds
+      echo -e "\033[36m> Applying patches for cyclonedds...\033[0m"
+      if [ -f install/iceoryx_binding_c/lib/libiceoryx_posh.dylib ]; then
+          rm install/iceoryx_binding_c/lib/libiceoryx_posh.dylib
+      fi
+      ln -s "../../iceoryx_posh/lib/libiceoryx_posh.dylib" install/iceoryx_binding_c/lib/libiceoryx_posh.dylib
+      if [ -f install/iceoryx_binding_c/lib/libiceoryx_hoofs.dylib ]; then
+          rm install/iceoryx_binding_c/lib/libiceoryx_hoofs.dylib
+      fi
+      ln -s "../../iceoryx_hoofs/lib/libiceoryx_hoofs.dylib" install/iceoryx_binding_c/lib/libiceoryx_hoofs.dylib
+      if [ -f install/iceoryx_binding_c/lib/libiceoryx_platform.dylib ]; then
+          rm install/iceoryx_binding_c/lib/libiceoryx_platform.dylib
+      fi
+      ln -s "../../iceoryx_hoofs/lib/libiceoryx_platform.dylib" install/iceoryx_binding_c/lib/libiceoryx_platform.dylib
+
+      # Apply patches for setuptools installation
+      # echo -e "\033[36m> Applying patches for setuptools installation...\033[0m"
+      # patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/python_setuptools_install.patch"
+      # patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/python_setuptools_easy_install.patch"
+
+      # Apply patches for orocos-kdl
+      echo -e "\033[36m> Applying patches for orocos-kdl (to use brew installed package)...\033[0m"
+      patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/geometry2_tf2_eigen_kdl.patch"
+      patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/ros_visualization_interactive_markers.patch"
+      patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/kdl_parser.patch"
+
+      # Apply patches for rviz_ogre_vendor
+      echo -e "\033[36m> Applying patches for rviz_ogre_vendor...\033[0m"
+      patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/rviz_default_plugins.patch"
+      patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/rviz_ogre_vendor.patch"
+      patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/0001-pragma.patch"
+
+      # Apply patch for rosbag2_transport
+      echo -e "\033[36m> Applying patch for rosbag2_transport...\033[0m"
+      patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/rosbag2_transport.patch"
+
+      # Apply patch for fastrtps
+      echo -e "\033[36m> Applying patch for fastrtps of Fast-DDS ...\033[0m"
+      patch -p1 -Ns < "${ARCSCFG_ROOT}/arcscfg/config/patches/${ARCSCFG_ROS_SOURCE_REF}/fastrtps.patch"
+
+      # Fix brew linking of qt5
+      echo -e "\033[36m> Fixing brew linking of qt5...\033[0m"
+      brew unlink qt && brew link qt@5
+
+      # Revert python_orocos_kdl_vendor back to 0.4.1
+      echo -e "\033[36m> Reverting python_orocos_kdl_vendor back to 0.4.1...\033[0m"
+      if [ -d "src/ros2/orocos_kdl_vendor" ]; then
+          rm -rf src/ros2/orocos_kdl_vendor
+          git clone https://github.com/ros2/orocos_kdl_vendor.git src/ros2/orocos_kdl_vendor
+          ( cd ./src/ros2/orocos_kdl_vendor/python_orocos_kdl_vendor || exit; git checkout 0.4.1 )
+      fi
+
+      # Remove eclipse-cyclonedds (compile error)
+      echo -e "\033[36m> Removing eclipse-cyclonedds (compile errors)\033[0m"
+      if [ -d "src/eclipse-cyclonedds" ]; then
+          rm -rf src/eclipse-cyclonedds
+      fi
+
+  - message: "Building ROS 2 Jazzy workspace (this might take a while - go grab a coffee)..."
+    script: |
+      #!/bin/zsh
+      set -e  # Exit immediately if a command fails
+      # set -x  # Enable script debugging
+
+      # Initialize pyenv
+      eval "$(pyenv init -)"
+      eval "$(pyenv virtualenv-init -)"
+
+      # Activate the virtual environment
+      pyenv activate ros2_jazzy
+
+      # Change directory to ROS 2 source workspace
+      cd "${ARCSCFG_ROS_SOURCE_WORKSPACE_PATH}"
+
+      # Set Environment Variables of Brew packages
+      echo -e "\033[36m> Setting Environment Variables of Brew packages...(OPENSSL_ROOT_DIR, CMAKE_PREFIX_PATH, PATH)\033[0m"
+      # shellcheck disable=SC2155
+      export OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)
+      # shellcheck disable=SC2155
+      export CMAKE_PREFIX_PATH=$(brew --prefix qt@5)/lib:$(brew --prefix qt@5)/lib/cmake:/opt/homebrew/opt:${CMAKE_PREFIX_PATH}
+      # shellcheck disable=SC2155
+      export PATH=$PATH:$(brew --prefix qt@5)/bin
+      # Disable notification error on mac
+      export COLCON_EXTENSION_BLOCKLIST=colcon_core.event_handler.desktop_notification
+
+      # Build workspace
+      if ! python3.11 -m colcon build \
+          --symlink-install \
+          --packages-skip-by-dep python_qt_binding \
+          --cmake-args \
+          --no-warn-unused-cli \
+          -DBUILD_TESTING=OFF \
+          -DINSTALL_EXAMPLES=ON \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_OSX_SYSROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk \
+          -DCMAKE_OSX_ARCHITECTURES=arm64 \
+          -DPython3_EXECUTABLE="$PYENV_ROOT/versions/ros2_jazzy/bin/python3" \
+          -Wno-dev --event-handlers console_cohesion+;
+          then
+          echo -e "\033[31mError: Build failed, aborting script.\033[0m"
+          exit 1
+      fi
+
   - message: "Installation complete."
