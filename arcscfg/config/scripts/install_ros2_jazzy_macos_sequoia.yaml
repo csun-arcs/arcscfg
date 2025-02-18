@@ -1,10 +1,21 @@
 name: Install ROS 2 Jazzy on macOS Sequoia
 description: |
-  This script installs ROS 2 Jazzy natively from source on macOS Sequoia.
+  This script builds ROS 2 Jazzy natively on Apple silicon (M-series chips) from
+  source on macOS Sequoia.
 
   Heavily inspired by:
     https://github.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon
 
+  Requirements:
+    - XCode (https://apps.apple.com/app/xcode/id497799835)
+    - Command Line Tools (https://developer.apple.com/download/more/):
+        - xcode-select --install
+        - sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+        - sudo xcodebuild -license
+    - Homebrew (https://brew.sh/):
+        - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        - (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> ~/.zprofile
+        - eval "$(/opt/homebrew/bin/brew shellenv)"
 os: macos
 ros_distro: jazzy
 steps:
