@@ -47,27 +47,27 @@ class ScriptExecutor:
 
             # Handle 'command', 'commands', and 'script'
             if 'command' in step:
-                self.run_command(step['command'])
+                self.run_command(cmd=step['command'], msg=message)
             elif 'commands' in step:
                 for cmd in step['commands']:
-                    self.run_command(cmd)
+                    self.run_command(cmd=cmd, msg=message)
             elif 'script' in step:
-                self.run_script(step['script'])
+                self.run_script(script_content=step['script'], msg=message)
             else:
                 self.logger.debug("No command found in this step.")
 
-    def run_command(self, cmd: str):
+    def run_command(self, cmd: str, msg: str):
         """
         Execute a single command.
         """
         self.logger.debug(f"Running command: {cmd}")
         try:
-            Shell.run_command(cmd, shell=True, verbose=True)
+            Shell.run_command(command=cmd, message=msg, shell=True, verbose=True)
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Command failed: {e}")
             raise
 
-    def run_script(self, script_content: str):
+    def run_script(self, script_content: str, msg: str):
         """
         Execute a multi-line script with proper shell handling.
         """
@@ -97,7 +97,8 @@ class ScriptExecutor:
         # Execute the script using the detected shell
         try:
             Shell.run_command(
-                [shell_path, "-c", script_body],
+                command=[shell_path, "-c", script_body],
+                message=msg,
                 shell=False,  # We are explicitly specifying the shell
                 verbose=True
             )

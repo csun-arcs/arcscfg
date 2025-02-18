@@ -86,6 +86,7 @@ class Shell:
     @staticmethod
     def run_command(
         command: Union[str, List[str]],
+        message: Optional[str],
         cwd: Optional[str] = None,
         capture_output: bool = True,
         verbose: bool = False,
@@ -99,6 +100,7 @@ class Shell:
 
         Args:
             command (Union[str, List[str]]): The command and its arguments to execute.
+            message (Optional[str]): A message to print to the console while running the command.
             cwd (Optional[str]): The working directory in which to execute the command.
             capture_output (bool): Whether to capture the command's output.
             verbose (bool): Whether to log the command's output in real-time.
@@ -114,7 +116,10 @@ class Shell:
             # Default to user's shell
             executable = os.environ.get("SHELL", "/bin/bash")
 
-        spinner = Spinner()
+        if message:
+            spinner = Spinner(message)
+        else:
+            spinner = Spinner()
         if verbose:
             spinner.start()
 
