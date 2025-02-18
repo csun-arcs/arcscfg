@@ -189,7 +189,7 @@ class DependencyManager:
                 self.logger.error(f"Failed to install brew packages: {e}")
                 pass
 
-    def install_ros2(self, ros_distro: str):
+    def install_ros2(self):
         """Install given ROS 2 distro using available OS-specific install scripts"""
         # Determine available scripts based on OS and ROS distro
         if platform.system().lower() == "darwin":
@@ -201,6 +201,9 @@ class DependencyManager:
                 os_name = "linux"
         else:
             os_name = sys.platform
+
+        # Get the desired ros distribution from the context
+        ros_distro = self.context["ARCSCFG_ROS_DISTRO"]
 
         scripts = self._get_available_ros_install_scripts(os_name, ros_distro)
 

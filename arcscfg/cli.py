@@ -121,6 +121,23 @@ def main():
         help="ROS 2 distribution to install (e.g., 'iron', 'jazzy').",
     )
     install_parser.add_argument(
+        "-rswl",
+        "--ros-source-workspace-path",
+        default="${HOME}/ros2_jazzy",
+        help=(
+            "Path a ROS 2 source workspace directory where ROS 2 source"
+            "repositories should be cloned to when building ROS 2 from source."
+        ),
+    )
+    install_parser.add_argument(
+        "-rsr",
+        "--ros-source-ref",
+        default="release-jazzy-20240523",
+        help=(
+            "Branch or tag reference for ROS 2 source repositories.  "
+        ),
+    )
+    install_parser.add_argument(
         "-df",
         "--dependency-file",
         help=(

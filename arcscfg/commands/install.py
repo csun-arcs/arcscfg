@@ -21,7 +21,10 @@ class InstallCommand(BaseCommand):
             assume_yes=self.args.yes,
             pip_install_method=self.args.pip_install_method or "user",
             context={
-                "ARCSCFG_ROOT": str(Path(__file__).parent.parent.parent.resolve())
+                "ARCSCFG_ROOT": str(Path(__file__).parent.parent.parent.resolve()),
+                "ARCSCFG_ROS_DISTRO": self.args.ros_distro,
+                "ARCSCFG_ROS_SOURCE_WORKSPACE_PATH": self.args.ros_source_workspace_path,
+                "ARCSCFG_ROS_SOURCE_REF": self.args.ros_source_ref,
             },
         )
 
@@ -29,8 +32,8 @@ class InstallCommand(BaseCommand):
         try:
             if self.args.install_ros2 or self.user_prompter.prompt_yes_no("Install ROS 2?", default=False):
                 self.args.ros_distro = self._get_or_prompt_ros_distro()
-                dep_manager.context["ROS_DISTRO"] = self.args.ros_distro
-                dep_manager.install_ros2(self.args.ros_distro)
+                dep_manager.context["ARCSCFG_ROS_DISTRO"] = self.args.ros_distro
+                dep_manager.install_ros2()
         except Exception as e:
             self.logger.error(f"An error occurred during ROS 2 installation: {e}")
             sys.exit(1)
@@ -39,7 +42,7 @@ class InstallCommand(BaseCommand):
         try:
             if self.args.install_deps or self.user_prompter.prompt_yes_no("Install dependencies?", default=False):
                 self.args.ros_distro = self._get_or_prompt_ros_distro()
-                dep_manager.context["ROS_DISTRO"] = self.args.ros_distro
+                dep_manager.context["ARCSCFG_ROS_DISTRO"] = self.args.ros_distro
                 dep_manager.dependencies_file = self._get_or_prompt_dependencies_file()
                 self.logger.info(f"Installing dependencies from '{dep_manager.dependencies_file}'...")
                 dep_manager.install_dependencies()
