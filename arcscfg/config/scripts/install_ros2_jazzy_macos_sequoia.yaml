@@ -34,7 +34,7 @@ steps:
       fi
 
       echo "pyenv virtual environment 'ros2_jazzy' is set up successfully."
-  - message: "Installing ROS 2 pip dependencies..."
+  - message: "Installing ROS 2 Jazzy pip dependencies..."
     script: |
       #!/bin/zsh
       set -e  # Exit immediately if a command fails
