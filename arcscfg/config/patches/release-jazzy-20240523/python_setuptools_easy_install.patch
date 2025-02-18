@@ -1,0 +1,22 @@
+# Credit: https://github.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon
+# Original: https://raw.githubusercontent.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon/main/patches/python_setuptools_easy_install.patch
+
+--- ~/.ros2_venv/lib/python3.11/site-packages/setuptools/command/easy_install.py
++++ ~/.ros2_venv/lib/python3.11/site-packages/setuptools/command/easy_install.py
+@@ -153,11 +153,11 @@
+     create_index = PackageIndex
+ 
+     def initialize_options(self):
+-        warnings.warn(
+-            "easy_install command is deprecated. "
+-            "Use build and pip and other standards-based tools.",
+-            EasyInstallDeprecationWarning,
+-        )
++        # warnings.warn(
++        #     "easy_install command is deprecated. "
++        #     "Use build and pip and other standards-based tools.",
++        #     EasyInstallDeprecationWarning,
++        # )
+ 
+         # the --user option seems to be an opt-in one,
+         # so the default should be False.
