@@ -5,12 +5,14 @@ from pathlib import Path
 from string import Template  # Import Template for substitution
 
 from arcscfg.utils.logger import Logger
+from arcscfg.utils.user_prompter import UserPrompter
 from arcscfg.utils.shell import Shell
 
 class ScriptExecutor:
-    def __init__(self, script_path: Path, logger: Logger, context: Dict[str, str] = None):
+    def __init__(self, script_path: Path, logger: Logger, user_prompter: UserPrompter, context: Dict[str, str] = None):
         self.script_path = script_path
         self.logger = logger
+        self.user_prompter = user_prompter
         self.context = context or {}
         self.script_content = self.load_and_substitute_script()
 
@@ -20,7 +22,7 @@ class ScriptExecutor:
         """
         with self.script_path.open('r') as file:
             raw_content = file.read()
-        
+
         self.logger.debug(f"Raw script content before substitution:\n{raw_content}")
 
         # Perform template substitution
@@ -39,6 +41,12 @@ class ScriptExecutor:
         """
         Execute each step in the substituted YAML script.
         """
+        self.logger.info(f"\n\nScript Name: {self.script_content['name']}")
+        self.logger.info(f"\n\nScript Description: {self.script_content['description']}")
+
+        if not self.user_prompter.prompt_yes_no("Execute script?", default=True):
+            return
+
         steps = self.script_content.get('steps', [])
         for step in steps:
             message = step.get('message')
