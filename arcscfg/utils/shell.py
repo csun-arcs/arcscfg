@@ -26,7 +26,7 @@ class Spinner:
 
     def run(self):
         while self.running:
-            sys.stderr.write(f"\r{self.message} {next(self.spinner)}")
+            sys.stderr.write(f"\r{self.message}{next(self.spinner)}")
             sys.stderr.flush()
             time.sleep(0.1)
 
