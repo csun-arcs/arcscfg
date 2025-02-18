@@ -49,6 +49,11 @@ class ScriptExecutor:
 
         steps = self.script_content.get('steps', [])
         for step in steps:
+            prompt = step.get('prompt')
+            if prompt:
+                if not self.user_prompter.prompt_yes_no(prompt, default=True):
+                    continue
+
             message = step.get('message')
             if message:
                 self.logger.info(message)
