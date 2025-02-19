@@ -1,0 +1,22 @@
+# Credit: https://github.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon
+# Original: https://raw.githubusercontent.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon/main/patches/python_setuptools_install.patch
+
+--- ~/.ros2_venv/lib/python3.11/site-packages/setuptools/command/install.py
++++ ~/.ros2_venv/lib/python3.11/site-packages/setuptools/command/install.py
+@@ -31,11 +31,11 @@
+ 
+     def initialize_options(self):
+ 
+-        warnings.warn(
+-            "setup.py install is deprecated. "
+-            "Use build and pip and other standards-based tools.",
+-            setuptools.SetuptoolsDeprecationWarning,
+-        )
++        # warnings.warn(
++        #     "setup.py install is deprecated. "
++        #     "Use build and pip and other standards-based tools.",
++        #     setuptools.SetuptoolsDeprecationWarning,
++        # )
+ 
+         orig.install.initialize_options(self)
+         self.old_and_unmanageable = None

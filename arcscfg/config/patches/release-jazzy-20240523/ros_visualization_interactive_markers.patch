@@ -1,0 +1,14 @@
+# Credit: https://github.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon
+# Original: https://raw.githubusercontent.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon/main/patches/ros_visualization_interactive_markers.patch
+
+--- ./src/ros-visualization/interactive_markers/CMakeLists.txt
++++ ./src/ros-visualization/interactive_markers/CMakeLists.txt
+@@ -22,6 +22,8 @@
+ find_package(tf2_geometry_msgs REQUIRED)
+ find_package(visualization_msgs REQUIRED)
+ 
++include_directories(${orocos_kdl_INCLUDE_DIRS})
++
+ ament_python_install_package(${PROJECT_NAME})
+ 
+ add_library(${PROJECT_NAME} SHARED

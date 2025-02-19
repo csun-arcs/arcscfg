@@ -1,0 +1,13 @@
+# Credit: https://github.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon
+# Original: https://raw.githubusercontent.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon/main/patches/kdl_parser.patch
+
+--- ./src/ros/kdl_parser/kdl_parser/CMakeLists.txt
++++ ./src/ros/kdl_parser/kdl_parser/CMakeLists.txt
+@@ -21,6 +21,7 @@
+ target_include_directories(${PROJECT_NAME} PUBLIC
+   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+   "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
++  "/opt/homebrew/Cellar/orocos-kdl/1.5.1/include/"
+ )
+ target_link_libraries(${PROJECT_NAME} PUBLIC
+   orocos-kdl
