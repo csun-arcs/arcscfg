@@ -426,10 +426,12 @@ class WorkspaceManager:
             self.logger.error(f"Failed to pull repositories: {e}")
             sys.exit(1)
 
-    def _find_available_workspaces(self, home_dir: Path = Path.home()) -> List[Path]:
+    def _find_available_workspaces(
+            self,
+            home_dir: Path = Path.home(),
+            naming_patterns: List[str] = ["*_ws", "ros2_*"]) -> List[Path]:
         """Find available ROS 2 workspaces in the home directory."""
         workspaces = []
-        naming_pattern = "*_ws"
         setup_files = [
             "install/setup.bash",
             "install/setup.zsh",
@@ -439,24 +441,24 @@ class WorkspaceManager:
             "devel/setup.sh",
         ]
 
-        self.logger.debug(
-            f"Searching for available workspaces in {home_dir} "
-            f"with pattern '{naming_pattern}'"
-        )
-
-        for dir in home_dir.glob(naming_pattern):
-            if dir.is_dir():
-                src_dir = dir / "src"
-                if src_dir.exists() and src_dir.is_dir():
-                    workspaces.append(dir)
-                    self.logger.debug(f"Found workspace with 'src' directory: {dir}")
-                    continue
-                for setup_file in setup_files:
-                    setup_path = dir / setup_file
-                    if setup_path.exists():
+        for naming_pattern in naming_patterns:
+            self.logger.debug(
+                f"Searching for available workspaces in {home_dir} "
+                f"with pattern '{naming_pattern}'"
+            )
+            for dir in home_dir.glob(naming_pattern):
+                if dir.is_dir():
+                    src_dir = dir / "src"
+                    if src_dir.exists() and src_dir.is_dir():
                         workspaces.append(dir)
-                        self.logger.debug(f"Found workspace: {dir}")
-                        break
+                        self.logger.debug(f"Found workspace with 'src' directory: {dir}")
+                        continue
+                    for setup_file in setup_files:
+                        setup_path = dir / setup_file
+                        if setup_path.exists():
+                            workspaces.append(dir)
+                            self.logger.debug(f"Found workspace: {dir}")
+                            break
 
         self.logger.debug(f"Total workspaces found: {len(workspaces)}")
         return workspaces
