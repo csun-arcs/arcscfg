@@ -1,6 +1,6 @@
-name: Install ROS 2 Jazzy on Ubuntu Noble
+name: Install ROS 2 Jazzy Jalisco from binaries on Ubuntu 24.04.1 (Noble Numbat)
 description: |
-  This script installs ROS 2 Jazzy on Ubuntu Noble 24.04
+  This script installs ROS 2 Jazzy Jalisco from binaries on Ubuntu 24.04.1 (Noble Numbat).
 os: ubuntu
 ros_distro: jazzy
 steps:

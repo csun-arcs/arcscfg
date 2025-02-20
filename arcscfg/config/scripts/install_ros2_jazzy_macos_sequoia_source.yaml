@@ -1,7 +1,7 @@
-name: Install ROS 2 Jazzy on macOS Sequoia
+name: Install ROS 2 Jazzy Jalisco from source on Apple silicon / macOS Sequoia
 description: |
-  This script builds ROS 2 Jazzy natively on Apple silicon (M-series chips) from
-  source on macOS Sequoia.
+  This script builds ROS 2 Jazzy Jalisco natively from source on Apple silicon
+  (M-series chips) running macOS Sequoia.
 
   Heavily inspired by:
     https://github.com/IOES-Lab/ROS2_Jazzy_MacOS_Native_AppleSilicon
