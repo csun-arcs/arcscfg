@@ -1,0 +1,11 @@
+name: Install ROS 2 Jazzy Jalisco in a Ubuntu 24.04.1 (Noble Numbat) Docker container on macOS
+description: |
+  This script installs ROS 2 Jazzy Jalisco natively in a Ubuntu 24.04.1 (Noble
+  Numbat) Docker container on macOS.
+
+  Requirements:
+    - TODO
+os: macos
+ros_distro: jazzy
+steps:
+  # TODO
