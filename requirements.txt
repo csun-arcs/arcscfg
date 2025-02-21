@@ -4,3 +4,4 @@ pyyaml
 pytest
 colorlog
 appdirs
+setuptools
