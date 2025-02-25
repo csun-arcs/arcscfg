@@ -86,7 +86,7 @@ class Shell:
     @staticmethod
     def run_command(
         command: Union[str, List[str]],
-        message: Optional[str],
+        message: Optional[str] = None,
         cwd: Optional[str] = None,
         capture_output: bool = True,
         verbose: bool = False,
