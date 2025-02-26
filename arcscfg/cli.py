@@ -203,7 +203,7 @@ def main():
         ),
     )
     setup_parser.add_argument(
-        "-r",
+        "-rs",
         "--recursive-search",
         action="store_true",
         help="Enable recursive search for dependency files within all subdirectories of the workspace.",
