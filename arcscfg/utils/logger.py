@@ -85,10 +85,10 @@ class Logger:
 
         # Define format strings
         fmt_debug = (
-            "%(log_color)s%(asctime)s - %(name)s - %(filename)s:%(lineno)d - "
-            "%(funcName)s - %(levelname)s - %(message)s"
+            "%(log_color)s[%(name)s - %(filename)s:%(lineno)d - "
+            "%(funcName)s - %(levelname)s]: %(message)s"
         )
-        fmt_other = ("%(log_color)s%(asctime)s - %(name)s - %(levelname)s - "
+        fmt_other = ("%(log_color)s[%(name)s - %(levelname)s]: "
                      "%(message)s")
 
         # Define log colors
@@ -129,8 +129,8 @@ class Logger:
         )
         file_handler.setLevel(logging.DEBUG)  # Log everything to file
         file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(filename)s:%(lineno)d - %(funcName)s - "
-            "%(levelname)s - %(message)s",
+            "[%(asctime)s - %(name)s - %(filename)s:%(lineno)d - %(funcName)s - "
+            "%(levelname)s]: %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(file_formatter)
