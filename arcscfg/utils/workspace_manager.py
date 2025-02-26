@@ -203,9 +203,9 @@ class WorkspaceManager:
                     )
 
             # Proceed with build
-            self.logger.info("Starting workspace build using colcon...")
+            self.logger.info(f"Building workspace at '{workspace}' using colcon...")
             Shell.run_command(["colcon", "build"], cwd=str(workspace), verbose=True)
-            self.logger.info("Workspace build completed successfully.")
+            self.logger.info(f"Workspace build of f'{workspace}' completed successfully.")
 
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Error building workspace: {e}")
