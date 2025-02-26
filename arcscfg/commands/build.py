@@ -26,13 +26,7 @@ class BuildCommand(BaseCommand):
             logger=self.logger,
         )
 
-        try:
-            self.logger.info(f"Building workspace at '{workspace_path}'")
-            manager.build_workspace()
-            self.logger.info("Workspace build completed successfully.")
-        except Exception as e:
-            self.logger.error(f"An error occurred during build: {e}")
-            sys.exit(1)
+        manager.build_workspace()
 
     def _get_workspace_path(self) -> Path:
         """

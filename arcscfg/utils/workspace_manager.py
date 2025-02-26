@@ -130,7 +130,7 @@ class WorkspaceManager:
             for dep_file in dependency_files:
                 self.clone_repositories(workspace, dep_file)
 
-            self.logger.info("Workspace setup completed successfully.")
+            self.logger.info(f"Workspace setup at '{workspace}' using config '{self.workspace_config}' completed successfully.")
 
         except Exception as e:
             self.logger.error(f"Error setting up workspace: {e}")
@@ -203,9 +203,9 @@ class WorkspaceManager:
                     )
 
             # Proceed with build
-            self.logger.info("Starting workspace build using colcon...")
+            self.logger.info(f"Building workspace at '{workspace}' using colcon...")
             Shell.run_command(["colcon", "build"], cwd=str(workspace), verbose=True)
-            self.logger.info("Workspace build completed successfully.")
+            self.logger.info(f"Workspace build of f'{workspace}' completed successfully.")
 
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Error building workspace: {e}")
@@ -398,32 +398,32 @@ class WorkspaceManager:
     def clone_repositories(self, workspace: Path, repos_file: Path):
         """Clone repos defined in the repositories config file to the ROS 2 workspace."""
         try:
-            self.logger.info(f"Cloning repositories from '{repos_file.name}'...")
+            self.logger.info(f"Cloning repositories from '{repos_file}' into '{workspace}/src'...")
             Shell.run_command(
                 ["vcs", "import", "--input", str(repos_file), "src"],
                 cwd=str(workspace),
                 verbose=True,
             )
             self.logger.info(
-                f"Repositories cloned successfully from '{repos_file.name}'."
+                f"Repositories cloned successfully from '{repos_file}' into '{workspace}/src'."
             )
         except subprocess.CalledProcessError as e:
             self.logger.error(
-                f"Failed to clone repositories from '{repos_file.name}': {e}"
+                f"Failed to clone repositories from '{repos_file} into '{workspace}/src': {e}"
             )
             sys.exit(1)
 
     def pull_repositories(self, workspace: Path):
         try:
-            self.logger.info("Pulling repositories...")
+            self.logger.info(f"Pulling repositories in '{workspace}/src'...")
             Shell.run_command(
                 ["vcs", "pull", "src"],
                 cwd=str(workspace),
                 verbose=True,
             )
-            self.logger.info("Repositories pulled successfully.")
+            self.logger.info(f"Repositories pulled successfully in '{workspace}/src'.")
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to pull repositories: {e}")
+            self.logger.error(f"Failed to pull repositories in '{workspace}/src': {e}")
             sys.exit(1)
 
     def _find_available_workspaces(

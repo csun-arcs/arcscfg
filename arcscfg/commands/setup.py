@@ -45,8 +45,6 @@ class SetupCommand(BaseCommand):
         # Set up the workspace
         manager.setup_workspace()
 
-        self.logger.info("Workspace setup completed successfully.")
-
     def _get_or_prompt_workspace_config(self) -> Path:
         """
         Get the workspace configuration path from arguments or prompt the user.
