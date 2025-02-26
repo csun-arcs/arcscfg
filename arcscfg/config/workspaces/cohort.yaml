@@ -24,6 +24,10 @@ repositories:
     type: git
     url: git@github.com:csun-arcs/arcs_cohort_control.git
     version: main
+  arcs_cohort_sensing:
+    type: git
+    url: git@github.com:csun-arcs/arcs_cohort_sensing.git
+    version: main
   arcs_cohort_perception:
     type: git
     url: git@github.com:csun-arcs/arcs_cohort_perception.git
