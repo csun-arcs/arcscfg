@@ -130,7 +130,7 @@ class WorkspaceManager:
             for dep_file in dependency_files:
                 self.clone_repositories(workspace, dep_file)
 
-            self.logger.info("Workspace setup completed successfully.")
+            self.logger.info(f"Workspace setup at '{workspace}' using config '{self.workspace_config}' completed successfully.")
 
         except Exception as e:
             self.logger.error(f"Error setting up workspace: {e}")
