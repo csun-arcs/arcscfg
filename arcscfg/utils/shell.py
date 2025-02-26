@@ -131,6 +131,8 @@ class Shell:
                 cmd = [command]
                 cmd_str = command
 
+            logger.debug(f"Running command: '{cmd_str}'")
+
             if verbose:
                 # Execute the command and stream output in real-time
                 process = subprocess.Popen(
