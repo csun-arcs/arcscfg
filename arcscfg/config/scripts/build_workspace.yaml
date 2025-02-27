@@ -25,7 +25,7 @@ steps:
       fi
 
       # Source ROS 2 underlay
-      source ${ARCSCFG_UNDERLAY}/install/setup.bash
+      source ${ARCSCFG_UNDERLAY}/setup.bash
 
       # Build ROS 2 workspace
       cd ${ARCSCFG_WORKSPACE}
