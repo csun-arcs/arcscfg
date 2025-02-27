@@ -7,9 +7,10 @@ from typing import List, Optional
 
 import yaml
 
-from .logger import Logger
-from .shell import Shell
-from .user_prompter import UserPrompter  # Import UserPrompter
+from arcscfg.utils.logger import Logger
+from arcscfg.utils.shell import Shell
+from arcscfg.utils.user_prompter import UserPrompter
+from arcscfg.utils.script_executor import ScriptExecutor
 
 
 class WorkspaceManager:
@@ -22,7 +23,7 @@ class WorkspaceManager:
         dependency_file_names: Optional[List[str]] = None,
         recursive_search: bool = False,
         max_retries: int = 2,
-        user_prompter: Optional[UserPrompter] = None,  # Add UserPrompter
+        user_prompter: Optional[UserPrompter] = None,
     ):
         self.logger = logger or Logger()
         self.assume_yes = assume_yes
@@ -186,27 +187,17 @@ class WorkspaceManager:
                 underlays, default_underlay=default_underlay
             )
 
-            if underlay:
-                self.logger.info(f"Using underlay: {underlay}")
-                setup_file = self.get_workspace_setup_file(underlay)
-                if setup_file:
-                    self.logger.debug(f"Sourcing setup file: {setup_file}")
-                    if Shell.source_file(setup_file):
-                        self.logger.info("Successfully sourced setup file.")
-                        if not self._verify_ros_setup():
-                            self.logger.warning(
-                                "ROS environment may not be fully configured."
-                            )
-                    else:
-                        self.logger.warning("Failed to source setup file.")
-                else:
-                    self.logger.warning(
-                        f"Setup file not found for underlay: {underlay}"
-                    )
-
             # Proceed with build
             self.logger.info(f"Building workspace at '{workspace}' using colcon...")
-            Shell.run_command(["colcon", "build"], cwd=str(workspace), verbose=True)
+            build_script = Path(__file__).parent.parent / 'config' / 'scripts' / 'build_workspace.yaml'
+            executor = ScriptExecutor(build_script, self.logger, self.user_prompter,
+                                      context={"ARCSCFG_UNDERLAY": str(underlay),
+                                               "ARCSCFG_WORKSPACE": str(workspace)})
+            try:
+                executor.execute()
+            except Exception as e:
+                self.logger.error(f"Workspace build at '{workspace}' failed: {e}")
+                sys.exit(1)
             self.logger.info(f"Workspace build of f'{workspace}' completed successfully.")
 
         except subprocess.CalledProcessError as e:
