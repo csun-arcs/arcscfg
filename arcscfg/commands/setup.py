@@ -22,6 +22,7 @@ class SetupCommand(BaseCommand):
             logger=self.logger,
             dependency_file_names=self.args.package_dependency_files,
             recursive_search=self.args.recursive_search,
+            max_retries=self.args.max_retries,
             user_prompter=self.user_prompter,  # Inject UserPrompter
         )
 

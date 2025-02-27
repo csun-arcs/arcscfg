@@ -208,6 +208,13 @@ def main():
         action="store_true",
         help="Enable recursive search for dependency files within all subdirectories of the workspace.",
     )
+    setup_parser.add_argument(
+        "-mr",
+        "--max-retries",
+        type=int,
+        default=2,
+        help="Set the maximum number of times vcs should retry commands on failure.",
+    )
     setup_parser.set_defaults(func=SetupCommand)
 
     ### 4. Build Command ###

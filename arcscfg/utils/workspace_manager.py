@@ -21,6 +21,7 @@ class WorkspaceManager:
         logger: Optional[Logger] = None,
         dependency_file_names: Optional[List[str]] = None,
         recursive_search: bool = False,
+        max_retries: int = 2,
         user_prompter: Optional[UserPrompter] = None,  # Add UserPrompter
     ):
         self.logger = logger or Logger()
@@ -41,6 +42,7 @@ class WorkspaceManager:
             else ["dependencies.repos", "dependencies.rosinstall"]
         )
         self.recursive_search = recursive_search
+        self.max_retries = max_retries
 
     def _discover_dependency_files(self) -> List[Path]:
         """Discover all dependency files within each cloned repository in the workspace."""
@@ -403,6 +405,7 @@ class WorkspaceManager:
                 ["vcs", "import", "--input", str(repos_file), "src"],
                 cwd=str(workspace),
                 verbose=True,
+                max_retries=self.max_retries,
             )
             self.logger.info(
                 f"Repositories cloned successfully from '{repos_file}' into '{workspace}/src'."
@@ -420,6 +423,7 @@ class WorkspaceManager:
                 ["vcs", "pull", "src"],
                 cwd=str(workspace),
                 verbose=True,
+                max_retries=self.max_retries,
             )
             self.logger.info(f"Repositories pulled successfully in '{workspace}/src'.")
         except subprocess.CalledProcessError as e:
