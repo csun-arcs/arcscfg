@@ -93,7 +93,8 @@ class Shell:
         shell: bool = False,
         executable: Optional[str] = None,
         text: bool = True,
-        timeout: Optional[int] = None,  # Timeout in seconds
+        timeout: Optional[int] = None,
+        max_retries: int = 0
     ) -> subprocess.CompletedProcess:
         """
         Execute a system command with optional shell specification, timeout, and display a spinner while running.
@@ -108,6 +109,7 @@ class Shell:
             executable (Optional[str]): Path to the shell executable to use. Defaults to user's shell.
             text (bool): If True, streams will be opened in text mode.
             timeout (Optional[int]): Maximum time (in seconds) to allow the command to run before terminating.
+            max_retries (int): Maximum number of times to retry a commmand if it fails.
 
         Returns:
             subprocess.CompletedProcess: The result of the executed command.
@@ -123,107 +125,127 @@ class Shell:
         if verbose:
             spinner.start()
 
-        try:
-            if isinstance(command, list):
-                cmd = command
-                cmd_str = ' '.join(command)
-            else:
-                cmd = [command]
-                cmd_str = command
+        num_tries = 0
+        while num_tries < 1 + max_retries:
+            try:
+                num_tries = num_tries + 1
+                if isinstance(command, list):
+                    cmd = command
+                    cmd_str = ' '.join(command)
+                else:
+                    cmd = [command]
+                    cmd_str = command
 
-            logger.debug(f"Running command: '{cmd_str}'")
+                logger.debug(f"Running command: '{cmd_str}'")
 
-            if verbose:
-                # Execute the command and stream output in real-time
-                process = subprocess.Popen(
-                    cmd,
-                    cwd=cwd,
-                    stdout=subprocess.PIPE if capture_output else None,
-                    stderr=subprocess.PIPE if capture_output else None,
-                    shell=shell,
-                    executable=executable,
-                    text=text,
-                )
+                if verbose:
+                    # Execute the command and stream output in real-time
+                    process = subprocess.Popen(
+                        cmd,
+                        cwd=cwd,
+                        stdout=subprocess.PIPE if capture_output else None,
+                        stderr=subprocess.PIPE if capture_output else None,
+                        shell=shell,
+                        executable=executable,
+                        text=text,
+                    )
 
-                # Stream output to logger
-                if capture_output and process.stdout and process.stderr:
-                    def stream_output(pipe, log_method):
-                        for line in iter(pipe.readline, ''):
-                            if line:
-                                log_method(line.strip())
-                        pipe.close()
+                    # Stream output to logger
+                    if capture_output and process.stdout and process.stderr:
+                        def stream_output(pipe, log_method):
+                            for line in iter(pipe.readline, ''):
+                                if line:
+                                    log_method(line.strip())
+                            pipe.close()
 
-                    # Change logging level for stderr to WARNING
-                    stdout_thread = threading.Thread(target=stream_output, args=(process.stdout, logger.debug))
-                    stderr_thread = threading.Thread(target=stream_output, args=(process.stderr, logger.warning))
+                        # Change logging level for stderr to WARNING
+                        stdout_thread = threading.Thread(target=stream_output, args=(process.stdout, logger.debug))
+                        stderr_thread = threading.Thread(target=stream_output, args=(process.stderr, logger.warning))
 
-                    stdout_thread.start()
-                    stderr_thread.start()
+                        stdout_thread.start()
+                        stderr_thread.start()
 
-                    try:
-                        # Wait for process to complete with timeout
-                        process.wait(timeout=timeout)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        spinner.stop()  # Stop spinner before logging timeout
+                        try:
+                            # Wait for process to complete with timeout
+                            process.wait(timeout=timeout)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            spinner.stop()  # Stop spinner before logging timeout
+                            stdout_thread.join()
+                            stderr_thread.join()
+                            logger.error(f"Command '{cmd_str}' timed out after {timeout} seconds.")
+                            raise
+
                         stdout_thread.join()
                         stderr_thread.join()
-                        logger.error(f"Command '{cmd_str}' timed out after {timeout} seconds.")
-                        raise
 
-                    stdout_thread.join()
-                    stderr_thread.join()
+                    else:
+                        try:
+                            # Wait for process to complete with timeout
+                            process.wait(timeout=timeout)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            spinner.stop()  # Stop spinner before logging timeout
+                            logger.error(f"Command '{cmd_str}' timed out after {timeout} seconds.")
+                            raise
 
+                    if process.returncode != 0:
+                        logger.error(f"Command exited with return code {process.returncode}")
+                        if num_tries < 1 + max_retries:
+                            logger.info(f"Retrying command (retry {num_tries} of {max_retries})...")
+                            continue
+                    return subprocess.CompletedProcess(cmd, process.returncode)
                 else:
-                    try:
-                        # Wait for process to complete with timeout
-                        process.wait(timeout=timeout)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        spinner.stop()  # Stop spinner before logging timeout
-                        logger.error(f"Command '{cmd_str}' timed out after {timeout} seconds.")
-                        raise
-
-                return_code = process.returncode
-                if return_code != 0:
-                    logger.error(f"Command exited with return code {return_code}")
-                return subprocess.CompletedProcess(cmd, return_code)
-            else:
-                # Execute the command without streaming output
-                result = subprocess.run(
-                    cmd,
-                    cwd=cwd,
-                    capture_output=capture_output,
-                    text=text,
-                    shell=shell,
-                    executable=executable,
-                    timeout=timeout,  # Pass the timeout here
-                )
-                if result.returncode != 0:
-                    logger.error(
-                        f"Command '{cmd_str}' failed with return code {result.returncode}"
+                    # Execute the command without streaming output
+                    result = subprocess.run(
+                        cmd,
+                        cwd=cwd,
+                        capture_output=capture_output,
+                        text=text,
+                        shell=shell,
+                        executable=executable,
+                        timeout=timeout,
                     )
-                if capture_output:
-                    logger.debug(f"Command stdout: {result.stdout}")
-                    if result.stderr:
-                        logger.warning(f"Command stderr: {result.stderr}")
-                return result
+                    if result.returncode != 0:
+                        logger.error(
+                            f"Command '{cmd_str}' failed with return code {result.returncode}"
+                        )
+                        if num_tries < 1 + max_retries:
+                            logger.info(f"Retrying command (retry {num_tries} of {max_retries})...")
+                            continue
+                    if capture_output:
+                        logger.debug(f"Command stdout: {result.stdout}")
+                        if result.stderr:
+                            logger.error(f"Command stderr: {result.stderr}")
+                            if num_tries <= 1 + max_retries:
+                                logger.info(f"Retrying command (retry {num_tries} of {max_retries})...")
+                                continue
+                    return result
 
-        except subprocess.TimeoutExpired as e:
-            spinner.stop()  # Ensure spinner is stopped before logging
-            logger.error(f"Command '{cmd_str}' timed out after {timeout} seconds.")
-            raise
-        except subprocess.CalledProcessError as e:
-            spinner.stop()  # Ensure spinner is stopped before logging
-            logger.error(f"Command '{' '.join(cmd)}' failed: {e}")
-            raise
-        except Exception as e:
-            spinner.stop()  # Ensure spinner is stopped before logging
-            logger.exception(f"Unexpected error while running command: {' '.join(cmd)}")
-            raise
-        finally:
-            if verbose:
-                spinner.stop()
+            except subprocess.TimeoutExpired as e:
+                spinner.stop()  # Ensure spinner is stopped before logging
+                logger.error(f"Command '{cmd_str}' timed out after {timeout} seconds.")
+                if num_tries < 1 + max_retries:
+                    logger.info(f"Retrying command (retry {num_tries} of {max_retries})...")
+                    continue
+                raise
+            except subprocess.CalledProcessError as e:
+                spinner.stop()  # Ensure spinner is stopped before logging
+                logger.error(f"Command '{' '.join(cmd)}' failed: {e}")
+                if num_tries < 1 + max_retries:
+                    logger.info(f"Retrying command (retry {num_tries} of {max_retries})...")
+                    continue
+                raise
+            except Exception as e:
+                spinner.stop()  # Ensure spinner is stopped before logging
+                logger.exception(f"Unexpected error while running command: {' '.join(cmd)}")
+                if num_tries < 1 + max_retries:
+                    logger.info(f"Retrying command (retry {num_tries} of {max_retries})...")
+                    continue
+                raise
+            finally:
+                if verbose:
+                    spinner.stop()
 
     @staticmethod
     def get_user_shell() -> str:
