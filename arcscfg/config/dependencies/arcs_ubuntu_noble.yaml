@@ -35,6 +35,7 @@ apt:
   - ros-${ARCSCFG_ROS_DISTRO}-navigation2
   - ros-${ARCSCFG_ROS_DISTRO}-nav2-bringup
   - ros-${ARCSCFG_ROS_DISTRO}-joint-state-publisher-gui
+  - ros-${ARCSCFG_ROS_DISTRO}-camera-info-manager
 
   # ------------------------------
   # DDS Implementations
