@@ -198,7 +198,7 @@ class WorkspaceManager:
             except Exception as e:
                 self.logger.error(f"Workspace build at '{workspace}' failed: {e}")
                 sys.exit(1)
-            self.logger.info(f"Workspace build of f'{workspace}' completed successfully.")
+            self.logger.info(f"Workspace build of '{workspace}' completed successfully.")
 
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Error building workspace: {e}")

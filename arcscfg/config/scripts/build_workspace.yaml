@@ -31,4 +31,4 @@ steps:
       cd ${ARCSCFG_WORKSPACE}
       colcon build
 
-  - message: "Workspace build complete."
+  - message: "Workspace build script finished."
