@@ -8,7 +8,6 @@ setup(
     packages=find_packages(include=["arcscfg", "arcscfg.*"]),
     include_package_data=True,
     install_requires=[
-        "setuptools", # For installation
         "pyyaml", # For YAML parsing
         "pytest", # For testing
         "colorlog", # For colored logging
