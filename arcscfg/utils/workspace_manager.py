@@ -155,6 +155,16 @@ class WorkspaceManager:
 
             # Pull repositories
             self.pull_repositories(workspace)
+
+            # Discover additional dependency files
+            dependency_files = self._discover_dependency_files()
+
+            # Clone repositories from each dependency file
+            for dep_file in dependency_files:
+                self.clone_repositories(workspace, dep_file)
+
+            self.logger.info(f"Workspace setup at '{workspace}' using config '{self.workspace_config}' completed successfully.")
+
         except Exception as e:
             self.logger.error(f"Error updating workspace: {e}")
             sys.exit(1)
