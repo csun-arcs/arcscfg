@@ -1,7 +1,4 @@
-# arcscfg/requirements.txt
-
 pyyaml
-pytest
 colorlog
 appdirs
-setuptools
+colcon-common-extensions

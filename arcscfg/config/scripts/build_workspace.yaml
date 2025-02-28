@@ -1,0 +1,34 @@
+name: Build a ROS 2 workspace
+description: |
+  This script will:
+    - Deactivate common Python virtual environments,
+    - Source a given ROS 2 underlay,
+    - Build a given ROS 2 workspace.
+steps:
+  - message: "Building workspace.."
+    script: |
+      #!/bin/bash
+
+      # Deactivate conda
+      if [[ -n "$CONDA_PREFIX" ]]; then
+        conda deactivate
+      fi
+
+      # Deactivate venv/virtualenv
+      if [[ -n "$VIRTUAL_ENV" ]]; then
+        deactivate 2>/dev/null || unset VIRTUAL_ENV && hash -r
+      fi
+
+      # Deactivate pyenv-virtualenv
+      if command -v pyenv >/dev/null 2>&1 && pyenv version-name | grep -q 'envs/'; then
+        pyenv deactivate
+      fi
+
+      # Source ROS 2 underlay
+      source ${ARCSCFG_UNDERLAY}/setup.bash
+
+      # Build ROS 2 workspace
+      cd ${ARCSCFG_WORKSPACE}
+      colcon build
+
+  - message: "Workspace build script finished."
