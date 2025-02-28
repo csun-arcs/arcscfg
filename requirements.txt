@@ -5,3 +5,4 @@ pytest
 colorlog
 appdirs
 setuptools
+colcon-common-extensions
