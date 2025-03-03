@@ -18,6 +18,7 @@ class WorkspaceManager:
         self,
         workspace_path: Optional[str] = None,
         workspace_config: Optional[str] = None,
+        underlay_path: Optional[str] = None,
         assume_yes: bool = False,
         logger: Optional[Logger] = None,
         dependency_file_names: Optional[List[str]] = None,
@@ -32,8 +33,9 @@ class WorkspaceManager:
         self.workspace_path = (
             Path(workspace_path).expanduser().resolve() if workspace_path else None
         )
-        self.workspace_config = (
-            Path(workspace_config).expanduser().resolve() if workspace_config else None
+        self.workspace_config = workspace_config
+        self.underlay_path = (
+            Path(underlay_path).expanduser().resolve() if underlay_path else None
         )
 
         # Initialize dependency file names
@@ -179,23 +181,8 @@ class WorkspaceManager:
             # Validate src directory
             self._validate_src_directory(workspace)
 
-            # Determine the path to setup.bash
-            setup_bash_path = workspace / "install" / "setup.bash"
-            default_underlay_path_str = self._parse_setup_bash(setup_bash_path)
-            default_underlay = (
-                Path(default_underlay_path_str) if default_underlay_path_str else None
-            )
-
-            # Find and set up underlays
-            underlays = self._find_ros2_underlays([Path("/opt/ros"), Path.home()])
-
-            # Remove duplicates and ensure all underlays are resolved
-            underlays = list(set(underlays))
-
-            # Prompt for underlay
-            underlay = self._prompt_for_underlay(
-                underlays, default_underlay=default_underlay
-            )
+            # TODO: Add underlay validation
+            underlay = self.underlay_path
 
             # Proceed with build
             self.logger.info(f"Building workspace at '{workspace}' using colcon...")
@@ -220,7 +207,7 @@ class WorkspaceManager:
     def _validate_workspace_path(
         self, workspace_path: Path, allow_create: bool = False
     ) -> Path:
-        """Validate that the workspace path is writable."""
+        """Validate a ROS 2 workspace path."""
         if workspace_path.exists():
             if not os.access(workspace_path, os.W_OK):
                 raise PermissionError(f"No write permission for {workspace_path}")
@@ -285,7 +272,7 @@ class WorkspaceManager:
         return src_dir
 
     @staticmethod
-    def _infer_default_workspace_path(workspace_config: Path) -> Path:
+    def infer_default_workspace_path(workspace_config: Path) -> Path:
         """
         Infer a default workspace path based on the workspace config.
 
@@ -344,7 +331,7 @@ class WorkspaceManager:
         )
         return None
 
-    def _parse_setup_bash(self, setup_bash_path: Path) -> Optional[str]:
+    def get_last_underlay_from_setup(self, setup_bash_path: Path) -> Optional[Path]:
         """
         Parse the setup.bash file to extract the last underlay in the build
         chain (the second-last COLCON_CURRENT_PREFIX entry in the setup file).
@@ -353,10 +340,10 @@ class WorkspaceManager:
             setup_bash_path (Path): Path to the setup.bash file.
 
         Returns:
-            Optional[str]: The inferred underlay path if found, else None.
+            Optional[Path]: The inferred underlay path if found, else None.
         """
         if not setup_bash_path.exists():
-            self.logger.warning(f"Setup file does not exist: {setup_bash_path}")
+            self.logger.debug(f"Setup file does not exist: {setup_bash_path}")
             return None
 
         colcon_prefix_pattern = re.compile(r'^COLCON_CURRENT_PREFIX="(.+)"$')
@@ -389,7 +376,7 @@ class WorkspaceManager:
                         f"Inferred default underlay without stripping: {default_underlay_str}"
                     )
 
-                return default_underlay_str
+                return Path(default_underlay_str)
             else:
                 self.logger.warning("Not enough COLCON_CURRENT_PREFIX entries found.")
                 return None
@@ -692,3 +679,161 @@ class WorkspaceManager:
                 self.logger.warning(f"  - {var}")
             return False
         return True
+
+    def get_or_prompt_workspace_config(
+        self,
+        available_configs: Optional[List[Path]] = None,
+        default_config: Optional[Path] = None,
+    ) -> Path:
+        """
+        Get the workspace configuration path from arguments or prompt the user.
+        """
+        workspace_config = None
+        if self.workspace_config:
+            try:
+                # Attempt absolute path
+                workspace_config = Path(self.workspace_config).resolve()
+                self.logger.debug(
+                    f"Attempting to resolve absolute workspace config path: {workspace_config}"
+                )
+                if not workspace_config.is_file():
+                    raise ValueError
+            except Exception:
+                try:
+                    # Attempt relative to config/workspaces
+                    workspace_config = (
+                        Path(__file__).parent.parent
+                        / "config"
+                        / "workspaces"
+                        / self.workspace_config
+                    ).resolve()
+                    self.logger.debug(
+                        f"Attempting to resolve relative workspace config: {workspace_config}"
+                    )
+                    if not workspace_config.is_file():
+                        raise ValueError
+                except Exception:
+                    try:
+                        # Attempt adding .yaml extension
+                        workspace_config = (
+                            Path(__file__).parent.parent
+                            / "config"
+                            / "workspaces"
+                            / f"{self.workspace_config}.yaml"
+                        ).resolve()
+                        self.logger.debug(
+                            f"Attempting to resolve workspace config path with .yaml extension: {workspace_config}"
+                        )
+                        if not workspace_config.is_file():
+                            raise ValueError
+                    except Exception:
+                        workspace_config = None
+                        self.logger.error(
+                            "Unable to resolve workspace config argument!"
+                        )
+
+        if not workspace_config:
+            if available_configs is None:
+                available_configs = self._get_available_workspace_configs()
+
+            workspace_config = self._prompt_for_workspace_config(available_configs, default_config)
+            self.logger.debug(f"Selected workspace config: {workspace_config}")
+
+        return workspace_config
+
+    def get_or_prompt_workspace_path(
+        self,
+        default_workspace: Optional[Path] = None,
+        allow_available: bool = True,
+        allow_create: bool = True,
+    ) -> Path:
+        """
+        Get the workspace path, or prompt the user to select or create one.
+        """
+        if self.workspace_path:
+            workspace_path = self.workspace_path
+            self.logger.debug(f"Using provided workspace path: {workspace_path}")
+            return workspace_path
+
+        return self._prompt_for_workspace(
+            default_workspace=default_workspace,
+            allow_available=allow_available,
+            allow_create=allow_create,
+        )
+
+    def get_or_prompt_underlay_path(
+        self,
+        default_underlay: Optional[Path] = None,
+        search_dirs: Optional[List[Path]] = None,
+    ) -> Optional[Path]:
+        """
+        Get the underlay path, or prompt the user to select one.
+        """
+        if self.underlay_path:
+            underlay_path = self.underlay_path
+            self.logger.debug(f"Using provided underlay path: {underlay_path}")
+            return underlay_path
+
+        if search_dirs is None:
+            search_dirs = [Path("/opt/ros"), Path.home()]
+
+        underlays = self._find_ros2_underlays(search_dirs)
+
+        return self._prompt_for_underlay(underlays, default_underlay=default_underlay)
+
+    def _get_available_workspace_configs(self) -> List[Path]:
+        """
+        Retrieve available workspace configuration files.
+        """
+        workspaces_dir = Path(__file__).parent.parent / "config" / "workspaces"
+        workspace_configs = list(workspaces_dir.glob("*.yaml"))
+        self.logger.debug(f"Found workspace configs: {workspace_configs}")
+        return workspace_configs
+
+    def _prompt_for_workspace_config(
+        self, workspace_configs: List[Path], default_config: Optional[Path] = None
+    ) -> Path:
+        """
+        Prompt the user to select a workspace configuration from the available options.
+        """
+        if self.assume_yes:
+            selected_config = default_config or (workspace_configs[0] if workspace_configs else None)
+            if selected_config:
+                self.logger.debug(
+                    f"Assuming default workspace config: {selected_config}"
+                )
+                return selected_config
+            else:
+                self.logger.error(
+                    "No workspace configurations available to select by default."
+                )
+                sys.exit(1)
+
+        options = [f"{config.stem} ('{config}')" for config in workspace_configs]
+        options.append("Enter a custom workspace config file path")
+
+        selection = self.user_prompter.prompt_selection(
+            message="Available workspace configurations:",
+            options=options,
+            default=1,  # First option as default
+        )
+
+        if selection < len(workspace_configs):
+            selected_config = workspace_configs[selection]
+            self.logger.debug(f"User selected workspace config: {selected_config}")
+            return selected_config
+
+        # Handle custom path input
+        custom_config = self.user_prompter.prompt_input(
+            "Enter the path to the custom workspace config"
+        )
+        custom_config_path = Path(custom_config).expanduser().resolve()
+
+        if not custom_config_path.is_file():
+            self.logger.error(
+                f"Custom workspace config does not exist: {custom_config_path}"
+            )
+            sys.exit(1)
+
+        self.logger.debug(f"User provided custom workspace config: {custom_config_path}")
+        return custom_config_path
