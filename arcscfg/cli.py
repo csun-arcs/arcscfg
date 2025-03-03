@@ -230,6 +230,11 @@ def main():
         "--workspace",
         help="ROS 2 workspace path.",
     )
+    build_parser.add_argument(
+        "-u",
+        "--underlay",
+        help="ROS 2 underlay path to use during build.",
+    )
     build_parser.set_defaults(func=BuildCommand)
 
     ### 5. Update Command ###
