@@ -79,6 +79,14 @@ def main():
         action="store_true",
         help="Assume default option for all prompts (overrides --assume-yes).",
     )
+    parser.add_argument(
+        "-n",
+        "--no",
+        "--assume-no",
+        action="store_true",
+        help=("Assume no for all yes/no prompts and use default options otherwise "
+              "(overrides both --assume-yes and --assume-default)."),
+    )
 
     # Create subparsers for commands
     subparsers = parser.add_subparsers(
@@ -278,7 +286,10 @@ def main():
     )
 
     # Initialize user prompter
-    if args.default:
+    if args.no:
+        setattr(args, "assume", "no")
+        user_prompter = UserPrompter(assume="no")
+    elif args.default:
         setattr(args, "assume", "default")
         user_prompter = UserPrompter(assume="default")
     elif args.yes:

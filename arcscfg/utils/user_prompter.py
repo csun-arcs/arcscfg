@@ -28,6 +28,8 @@ class UserPrompter:
             return True
         elif self.assume == "default":
             return default
+        elif self.assume == "no":
+            return False
 
         default_str = "Y/n" if default else "y/N"
         while True:
