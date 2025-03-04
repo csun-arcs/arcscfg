@@ -22,7 +22,7 @@ class UpdateCommand(BaseCommand):
         manager = WorkspaceManager(
             workspace_path=str(workspace_path),
             workspace_config=None,
-            assume_yes=self.args.yes,
+            assume=self.args.assume,
             logger=self.logger,
         )
 
@@ -46,7 +46,7 @@ class UpdateCommand(BaseCommand):
             manager = WorkspaceManager(
                 workspace_path=None,
                 workspace_config=None,
-                assume_yes=self.args.yes,
+                assume=self.args.assume,
                 logger=self.logger,
             )
             workspace_path = manager._prompt_for_workspace(

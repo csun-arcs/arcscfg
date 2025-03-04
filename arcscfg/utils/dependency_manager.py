@@ -18,7 +18,7 @@ class DependencyManager:
         self,
         dependencies_file: Optional[Union[str, Path]] = None,
         logger: Optional[Logger] = None,
-        assume_yes: bool = False,
+        assume: Optional[str] = None,
         pip_install_method: str = "user",
         context: Optional[Dict[str, str]] = None,
         user_prompter: Optional[UserPrompter] = None,
@@ -28,11 +28,11 @@ class DependencyManager:
         else:
             self.dependencies_file = None
         self.logger = logger or Logger()
-        self.assume_yes = assume_yes
+        self.assume = assume
         self.pip_install_method = pip_install_method
         self.dependencies = {}  # type: Dict[str, Any]
         self.context = context or {}
-        self.user_prompter = user_prompter or UserPrompter(assume_yes=assume_yes)
+        self.user_prompter = user_prompter or UserPrompter(assume=assume)
 
     def load_dependencies(self):
         """Load dependencies from dependencies file"""

@@ -17,7 +17,7 @@ class SetupCommand(BaseCommand):
         manager = WorkspaceManager(
             workspace_path=self.args.workspace,
             workspace_config=self.args.workspace_config,
-            assume_yes=self.args.yes,
+            assume=self.args.assume,
             logger=self.logger,
             dependency_file_names=self.args.package_dependency_files,
             recursive_search=self.args.recursive_search,

@@ -18,7 +18,7 @@ class ConfigCommand(BaseCommand):
             logger=self.logger,
             backer_upper=self.backer_upper,
             workspace_path=self.args.workspace,
-            assume_yes=self.args.yes,
+            assume=self.args.assume,
         )
 
         try:

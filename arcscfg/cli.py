@@ -70,7 +70,22 @@ def main():
         "--yes",
         "--assume-yes",
         action="store_true",
-        help="Assume yes to all prompts and use default options.",
+        help="Assume yes for all yes/no prompts and use default options otherwise.",
+    )
+    parser.add_argument(
+        "-d",
+        "--default",
+        "--assume-default",
+        action="store_true",
+        help="Assume default option for all prompts (overrides --assume-yes).",
+    )
+    parser.add_argument(
+        "-n",
+        "--no",
+        "--assume-no",
+        action="store_true",
+        help=("Assume no for all yes/no prompts and use default options otherwise "
+              "(overrides both --assume-yes and --assume-default)."),
     )
 
     # Create subparsers for commands
@@ -271,7 +286,18 @@ def main():
     )
 
     # Initialize user prompter
-    user_prompter = UserPrompter(assume_yes=args.yes)
+    if args.no:
+        setattr(args, "assume", "no")
+        user_prompter = UserPrompter(assume="no")
+    elif args.default:
+        setattr(args, "assume", "default")
+        user_prompter = UserPrompter(assume="default")
+    elif args.yes:
+        setattr(args, "assume", "yes")
+        user_prompter = UserPrompter(assume="yes")
+    else:
+        setattr(args, "assume", None)
+        user_prompter = UserPrompter()
 
     logger.info("Starting arcscfg tool")
 

@@ -18,7 +18,7 @@ class InstallCommand(BaseCommand):
         dep_manager = DependencyManager(
             dependencies_file=None,
             logger=self.logger,
-            assume_yes=self.args.yes,
+            assume=self.args.assume,
             pip_install_method=self.args.pip_install_method or "user",
             context={
                 "ARCSCFG_ROOT": str(Path(__file__).parent.parent.parent.resolve()),

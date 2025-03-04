@@ -2,14 +2,16 @@ from typing import Dict, List, Optional
 
 
 class UserPrompter:
-    def __init__(self, assume_yes: bool = False):
+    def __init__(self, assume: Optional[str] = None):
         """
         Initialize the UserPrompter.
 
         Args:
-            assume_yes (bool): If True, automatically assume 'Yes' for all prompts.
+            assume Optional[str]: If 'yes', automatically assume 'Yes' for all
+            yes/no prompts and default options otherwise.  If 'default',
+            automatically assume default responses for all prompts.
         """
-        self.assume_yes = assume_yes
+        self.assume = assume
 
     def prompt_yes_no(self, message: str, default: bool = False) -> bool:
         """
@@ -22,8 +24,12 @@ class UserPrompter:
         Returns:
             bool: True for 'Yes', False for 'No'.
         """
-        if self.assume_yes:
+        if self.assume == "yes":
             return True
+        elif self.assume == "default":
+            return default
+        elif self.assume == "no":
+            return False
 
         default_str = "Y/n" if default else "y/N"
         while True:
@@ -51,7 +57,7 @@ class UserPrompter:
         Returns:
             int: The index of the selected option (0-based).
         """
-        if self.assume_yes:
+        if self.assume == "yes" or self.assume == "default":
             if default is not None:
                 return default - 1
             else:
@@ -101,7 +107,7 @@ class UserPrompter:
         Returns:
             str: The user's input or the default value.
         """
-        if self.assume_yes and default is not None:
+        if (self.assume == "yes" or self.assume == "default") and default is not None:
             return default
 
         if options:

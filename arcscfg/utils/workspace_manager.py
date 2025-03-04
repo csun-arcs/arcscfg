@@ -19,7 +19,7 @@ class WorkspaceManager:
         workspace_path: Optional[str] = None,
         workspace_config: Optional[str] = None,
         underlay_path: Optional[str] = None,
-        assume_yes: bool = False,
+        assume: Optional[str] = None,
         logger: Optional[Logger] = None,
         dependency_file_names: Optional[List[str]] = None,
         recursive_search: bool = False,
@@ -27,8 +27,8 @@ class WorkspaceManager:
         user_prompter: Optional[UserPrompter] = None,
     ):
         self.logger = logger or Logger()
-        self.assume_yes = assume_yes
-        self.user_prompter = user_prompter or UserPrompter(assume_yes=assume_yes)
+        self.assume = assume
+        self.user_prompter = user_prompter or UserPrompter(assume=assume)
 
         self.workspace_path = (
             Path(workspace_path).expanduser().resolve() if workspace_path else None
@@ -504,7 +504,7 @@ class WorkspaceManager:
         allow_create: bool = True,
     ) -> Path:
         """Prompt the user to select or create a workspace."""
-        if self.assume_yes:
+        if self.assume == "yes" or self.assume == "default":
             if allow_available:
                 workspaces = self._find_available_workspaces()
                 if workspaces:
@@ -586,7 +586,7 @@ class WorkspaceManager:
         default_underlay: Optional[Path] = None,
     ) -> Optional[Path]:
         """Prompt the user to select an underlay or enter a custom path."""
-        if self.assume_yes:
+        if self.assume == "yes" or self.assume == "default":
             if default_underlay:
                 self.logger.debug(
                     f"Assuming provided default underlay: {default_underlay}"
@@ -796,7 +796,7 @@ class WorkspaceManager:
         """
         Prompt the user to select a workspace configuration from the available options.
         """
-        if self.assume_yes:
+        if self.assume == "yes" or self.assume == "default":
             selected_config = default_config or (workspace_configs[0] if workspace_configs else None)
             if selected_config:
                 self.logger.debug(

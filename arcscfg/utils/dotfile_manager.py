@@ -16,14 +16,14 @@ class DotfileManager:
         logger: Optional[Logger] = None,
         backer_upper: Optional[BackerUpper] = None,
         workspace_path: Optional[Path] = None,
-        assume_yes: bool = False,
+        assume: Optional[str] = None,
         user_prompter: Optional[UserPrompter] = None,
     ):
         self.logger = logger or Logger()
         self.backer_upper = backer_upper or BackerUpper()
         self.workspace_path = workspace_path
-        self.assume_yes = assume_yes
-        self.user_prompter = user_prompter or UserPrompter(assume_yes=assume_yes)
+        self.assume = assume
+        self.user_prompter = user_prompter or UserPrompter(assume=assume)
 
         # Paths to the dotfiles and githooks directories
         self.dotfiles_dir = Path(__file__).parent.parent / "config" / "dotfiles"
@@ -244,7 +244,7 @@ class DotfileManager:
             manager = WorkspaceManager(
                 workspace_path=None,
                 workspace_config=None,
-                assume_yes=self.assume_yes,
+                assume=self.assume,
                 logger=self.logger,
                 user_prompter=self.user_prompter,
             )

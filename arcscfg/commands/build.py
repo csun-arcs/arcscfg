@@ -15,7 +15,7 @@ class BuildCommand(BaseCommand):
         manager = WorkspaceManager(
             workspace_path=self.args.workspace,
             underlay_path=self.args.underlay,
-            assume_yes=self.args.yes,
+            assume=self.args.assume,
             logger=self.logger,
             user_prompter=self.user_prompter,
         )
