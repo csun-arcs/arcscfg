@@ -1,0 +1,109 @@
+---
+apt:
+  # ------------------------------
+  # Essential Build Tools
+  # ------------------------------
+  - build-essential
+  - cmake
+  - git
+  - wget
+  - curl
+
+  # ------------------------------
+  # ROS 2 Core Dependencies
+  # (Handled during ROS 2 installation)
+  # ------------------------------
+  - libbullet-dev
+  - python3-pip
+  - python3-colcon-common-extensions
+  - python3-rosdep
+  - python3-vcstool
+  - python3-argcomplete
+  - python3-empy
+  - python3-numpy
+  - python3-yaml
+  - python3-netifaces
+  - libasio-dev
+  - libtinyxml2-dev
+  - libcunit1-dev
+  - libeigen3-dev
+  - libopencv-dev
+
+  # ------------------------------
+  # ROS 2 Packages
+  # ------------------------------
+  - ros-${ARCSCFG_ROS_DISTRO}-navigation2
+  - ros-${ARCSCFG_ROS_DISTRO}-nav2-bringup
+  - ros-${ARCSCFG_ROS_DISTRO}-joint-state-publisher-gui
+  - ros-${ARCSCFG_ROS_DISTRO}-camera-info-manager
+  - ros-${ARCSCFG_ROS_DISTRO}-controller-manager
+  - ros-${ARCSCFG_ROS_DISTRO}-ros-gz
+
+  # ------------------------------
+  # DDS Implementations
+  # ------------------------------
+  - libfastrtps-dev
+
+  # ------------------------------
+  # GUI Tools and Simulation
+  # ------------------------------
+  - qtbase5-dev
+  - libqt5core5a
+  - libqt5gui5
+  - libqt5widgets5
+  - python3-pyqt5
+
+  # ------------------------------
+  # Terminals
+  # ------------------------------
+  - terminator
+  - tmux
+
+  # ------------------------------
+  # Linters and Code Formatters
+  # ------------------------------
+  - clang-format
+  - clang-tidy
+  - cppcheck
+
+  # ------------------------------
+  # Debugging and Testing Tools
+  # ------------------------------
+  - gdb
+  - valgrind
+
+  # ------------------------------
+  # Documentation Tools
+  # ------------------------------
+  - doxygen
+  - graphviz
+
+  # ------------------------------
+  # Virtual Environments
+  # ------------------------------
+  - pipx
+
+pip:
+  # ------------------------------
+  # Colcon and ROS Tools
+  # ------------------------------
+  - vcstool
+
+  # ------------------------------
+  # Linters and Formatters for Python
+  # ------------------------------
+  - flake8
+  - black
+  - isort
+  - mypy
+  - pydocstyle
+
+  # ------------------------------
+  # Testing Tools
+  # ------------------------------
+  - pytest
+
+  # ------------------------------
+  # Virtual Environments
+  # ------------------------------
+  - virtualenv

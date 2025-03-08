@@ -37,6 +37,7 @@ apt:
   - ros-${ARCSCFG_ROS_DISTRO}-joint-state-publisher-gui
   - ros-${ARCSCFG_ROS_DISTRO}-camera-info-manager
   - ros-${ARCSCFG_ROS_DISTRO}-controller-manager
+  - ros-${ARCSCFG_ROS_DISTRO}-ros-gz
 
   # ------------------------------
   # DDS Implementations
