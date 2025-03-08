@@ -15,7 +15,7 @@ steps:
   - message: "Updating apt package index & setting locale..."
     script: |
       #!/bin/bash
-      sudo apt update && sudo apt install locales
+      sudo apt-get update && sudo apt-get install locales
       sudo locale-gen en_US en_US.UTF-8
       sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
       export LANG=en_US.UTF-8
@@ -28,7 +28,7 @@ steps:
 
   - message: "Adding ROS 2 GPG key..."
     script: |
-      sudo apt update && sudo apt install curl -y
+      sudo apt-get update && sudo apt-get install curl -y
       sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 
   - message: "Adding ROS 2 apt repository..."
