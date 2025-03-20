@@ -12,21 +12,38 @@ steps:
           exit 0
       fi
 
+  - message: "Setting locale..."
+    script: |
+      #!/bin/bash
+      sudo apt-get update && sudo apt-get install -y locales
+      sudo locale-gen en_US en_US.UTF-8
+      sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+      export LANG=en_US.UTF-8
+
+  - message: "Enabling Ubuntu Universe repository..."
+    script: |
+      #!/bin/bash
+      sudo apt-get install -y software-properties-common
+      sudo add-apt-repository -y universe
+
+  - message: "Adding ROS 2 GPG key with apt..."
+    script: |
+      #!/bin/bash
+      sudo apt-get update && sudo apt-get install curl -y
+      sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+  - message: "Adding ROS 2 apt repository to sources list..."
+    command: |
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+  - message: "Installing development tools..."
+    command: "sudo apt-get update && sudo apt-get install -y ros-dev-tools"
+
   - message: "Updating apt package index..."
     command: "sudo apt-get update"
 
-  - message: "Installing essential packages (curl, gnupg2, lsb-release)..."
-    command: "sudo apt-get install -y curl gnupg2 lsb-release"
-
-  - message: "Adding ROS 2 GPG key..."
-    command: "sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc -o /usr/share/keyrings/ros-archive-keyring.gpg"
-
-  - message: "Adding ROS 2 apt repository..."
-    command: |
-      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-
-  - message: "Updating apt package index after adding ROS 2 repository..."
-    command: "sudo apt-get update"
+  - message: "Upgrading packages.."
+    command: "sudo apt-get upgrade -y"
 
   - message: "Installing ROS 2 Jazzy desktop packages..."
     command: "sudo apt-get install -y ros-jazzy-desktop"
