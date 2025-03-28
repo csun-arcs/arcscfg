@@ -19,6 +19,7 @@ class WorkspaceManager:
         workspace_path: Optional[str] = None,
         workspace_config: Optional[str] = None,
         underlay_path: Optional[str] = None,
+        build_script_path: Optional[str] = None,
         assume: Optional[str] = None,
         logger: Optional[Logger] = None,
         dependency_file_names: Optional[List[str]] = None,
@@ -37,6 +38,7 @@ class WorkspaceManager:
         self.underlay_path = (
             Path(underlay_path).expanduser().resolve() if underlay_path else None
         )
+        self.build_script_path = build_script_path
 
         # Initialize dependency file names
         self.dependency_file_names = (
@@ -184,9 +186,11 @@ class WorkspaceManager:
             # TODO: Add underlay validation
             underlay = self.underlay_path
 
+            # TODO: Add build script validation
+            build_script = self.build_script_path
+
             # Proceed with build
-            self.logger.info(f"Building workspace at '{workspace}' using colcon...")
-            build_script = Path(__file__).parent.parent / 'config' / 'scripts' / 'build_workspace.yaml'
+            self.logger.info(f"Building workspace at '{workspace}' using build script {build_script}...")
             executor = ScriptExecutor(build_script, self.logger, self.user_prompter,
                                       context={"ARCSCFG_UNDERLAY": str(underlay),
                                                "ARCSCFG_WORKSPACE": str(workspace)})
@@ -781,6 +785,34 @@ class WorkspaceManager:
 
         return self._prompt_for_underlay(underlays, default_underlay=default_underlay)
 
+    def get_or_prompt_build_script_path(
+        self,
+        default_build_script: Optional[Path] = None,
+    ) -> Path:
+        """
+        Get the build script path, or prompt the user to select one.
+        """
+        if self.build_script_path:
+            build_scripts = self._get_available_build_scripts()
+
+            build_script_path = None
+            for build_script in build_scripts:
+                if str(self.build_script_path) in str(build_script):
+                    build_script_path = build_script
+                    break
+
+            if not build_script_path:
+                self.logger.error(f"Failed to match provided build script path: {build_script_path}")
+                sys.exit(1)
+            else:
+                self.logger.debug(f"Using provided build script path: {build_script_path}")
+                return Path(build_script_path).expanduser().resolve()
+
+        return self._prompt_for_build_script(
+            scripts=None,
+            default_script=default_build_script,
+        )
+
     def _get_available_workspace_configs(self) -> List[Path]:
         """
         Retrieve available workspace configuration files.
@@ -837,3 +869,30 @@ class WorkspaceManager:
 
         self.logger.debug(f"User provided custom workspace config: {custom_config_path}")
         return custom_config_path
+
+    def _get_available_build_scripts(self) -> List[Path]:
+        """Get available ROS 2 workspace build scripts"""
+        scripts_dir = Path(__file__).parent.parent / 'config' / 'scripts'
+        pattern = f"build_*.yaml"
+        return list(scripts_dir.glob(pattern))
+
+    def _prompt_for_build_script(self,
+            scripts: Optional[List[Path]],
+            default_script: Optional[Path]) -> Path:
+        """Prompt user for ROS 2 workspace build script given list of script paths"""
+        if not scripts:
+            scripts = self._get_available_build_scripts()
+
+        options = [f"{script.name}" for script in scripts]
+
+        if not default_script:
+            default_script_index = options.index("build_workspace.yaml") + 1
+        else:
+            default_script_index = scripts.index(default_script) + 1
+
+        selection = self.user_prompter.prompt_selection(
+            message="Select a build script:",
+            options=options,
+            default=default_script_index,
+        )
+        return scripts[selection]
