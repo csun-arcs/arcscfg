@@ -1,0 +1,38 @@
+
+name: Build a CoHORT ROS 2 workspace with CUDA/GPU-dependent packages.
+description: |
+  This script will:
+    - Deactivate common Python virtual environments,
+    - Source a given ROS 2 underlay,
+    - Build a given CoHORT ROS 2 workspace, including packages that depend on CUDA and/or other GPU-dependent packages.
+steps:
+  - message: "Building workspace.."
+    script: |
+      #!/bin/bash
+
+      # Deactivate conda
+      if [[ -n "$CONDA_PREFIX" ]]; then
+        conda deactivate
+      fi
+
+      # Deactivate venv/virtualenv
+      if [[ -n "$VIRTUAL_ENV" ]]; then
+        deactivate 2>/dev/null || unset VIRTUAL_ENV && hash -r
+      fi
+
+      # Deactivate pyenv-virtualenv
+      if command -v pyenv >/dev/null 2>&1 && pyenv version-name | grep -q 'envs/'; then
+        pyenv deactivate
+      fi
+
+      # Source ROS 2 underlay
+      source ${ARCSCFG_UNDERLAY}/setup.bash
+
+      # Include CUDA-dependent packages
+      rm -f ${ARCSCFG_WORKSPACE}/src/zed-ros2-wrapper/zed_components/COLCON_IGNORE &> /dev/null
+
+      # Build ROS 2 workspace
+      cd ${ARCSCFG_WORKSPACE}
+      colcon build
+
+  - message: "Workspace build script finished."
