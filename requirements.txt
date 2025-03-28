@@ -2,3 +2,5 @@ pyyaml
 colorlog
 appdirs
 colcon-common-extensions
+numpy
+lark
