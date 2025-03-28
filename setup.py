@@ -11,7 +11,9 @@ setup(
         "pyyaml", # For YAML parsing
         "colorlog", # For colored logging
         "appdirs", # For finding log dirs on different systems
-        "colcon-common-extensions" # For ROS 2 builds
+        "colcon-common-extensions", # For ROS 2 colcon builds
+        "numpy", # For ROS 2 colcon builds of certain packages
+        "lark", # For ROS 2 colcon builds of certain packages
     ],
     extras_require={
         "dev": ["pytest"] # For testing

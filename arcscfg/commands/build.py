@@ -15,6 +15,7 @@ class BuildCommand(BaseCommand):
         manager = WorkspaceManager(
             workspace_path=self.args.workspace,
             underlay_path=self.args.underlay,
+            build_script_path=self.args.build_script,
             assume=self.args.assume,
             logger=self.logger,
             user_prompter=self.user_prompter,
@@ -32,9 +33,13 @@ class BuildCommand(BaseCommand):
         # Get or prompt for underlay path
         underlay_path = manager.get_or_prompt_underlay_path(default_underlay=default_underlay_path)
 
+        # Get or prompt for build script path
+        build_script_path = manager.get_or_prompt_build_script_path()
+
         # Update the manager with the resolved paths
         manager.workspace_path = workspace_path
         manager.underlay_path = underlay_path
+        manager.build_script_path = build_script_path
 
         # Proceed with building the workspace
         manager.build_workspace()
