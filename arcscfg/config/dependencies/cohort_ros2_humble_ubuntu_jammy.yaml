@@ -36,16 +36,14 @@ apt:
   - ros-${ARCSCFG_ROS_DISTRO}-controller-manager
   - ros-${ARCSCFG_ROS_DISTRO}-ros-gz
   - ros-${ARCSCFG_ROS_DISTRO}-joint-state-publisher-gui
-  - ros-${ARCSCFG_ROS_DISTRO}-ros-xacro
-  - ros-${ARCSCFG_ROS_DISTRO}-ros-sdformat-urdf
-  - ros-${ARCSCFG_ROS_DISTRO}-ros-robot-localization
-  - ros-${ARCSCFG_ROS_DISTRO}-ros-slam-toolbox
+  - ros-${ARCSCFG_ROS_DISTRO}-xacro
+  - ros-${ARCSCFG_ROS_DISTRO}-sdformat-urdf
+  - ros-${ARCSCFG_ROS_DISTRO}-robot-localization
+  - ros-${ARCSCFG_ROS_DISTRO}-slam-toolbox
   - ros-${ARCSCFG_ROS_DISTRO}-navigation2
   - ros-${ARCSCFG_ROS_DISTRO}-nav2-bringup
   - ros-${ARCSCFG_ROS_DISTRO}-ros2-control
   - ros-${ARCSCFG_ROS_DISTRO}-ros2-controllers
-  - ros-${ARCSCFG_ROS_DISTRO}-gz-ros2-control
-
 
   # ------------------------------
   # DDS Implementations
