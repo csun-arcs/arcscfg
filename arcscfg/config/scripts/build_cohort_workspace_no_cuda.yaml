@@ -32,6 +32,6 @@ steps:
 
       # Build ROS 2 workspace
       cd ${ARCSCFG_WORKSPACE}
-      colcon build
+      colcon build ${ARCSCFG_SYMLINK_INSTALL_ARG}
 
   - message: "Workspace build script finished."

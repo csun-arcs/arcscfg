@@ -256,6 +256,12 @@ def main():
         help=("ROS 2 workspace build script path "
               "(will attempt matching to existing scripts)."),
     )
+    build_parser.add_argument(
+        "-si",
+        "--symlink-install",
+        action="store_true",
+        help="Use symlinks instead of copying files where possible.",
+    )
     build_parser.set_defaults(func=BuildCommand)
 
     ### 5. Update Command ###

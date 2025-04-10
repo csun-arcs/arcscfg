@@ -1,3 +1,4 @@
+from os import symlink
 from arcscfg.utils.workspace_manager import WorkspaceManager
 
 from .base import BaseCommand
@@ -16,6 +17,7 @@ class BuildCommand(BaseCommand):
             workspace_path=self.args.workspace,
             underlay_path=self.args.underlay,
             build_script_path=self.args.build_script,
+            symlink_install=self.args.symlink_install,
             assume=self.args.assume,
             logger=self.logger,
             user_prompter=self.user_prompter,

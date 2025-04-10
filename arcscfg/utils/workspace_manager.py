@@ -20,6 +20,7 @@ class WorkspaceManager:
         workspace_config: Optional[str] = None,
         underlay_path: Optional[str] = None,
         build_script_path: Optional[str] = None,
+        symlink_install: Optional[bool] = False,
         assume: Optional[str] = None,
         logger: Optional[Logger] = None,
         dependency_file_names: Optional[List[str]] = None,
@@ -39,6 +40,7 @@ class WorkspaceManager:
             Path(underlay_path).expanduser().resolve() if underlay_path else None
         )
         self.build_script_path = build_script_path
+        self.symlink_install = symlink_install
 
         # Initialize dependency file names
         self.dependency_file_names = (
@@ -189,11 +191,14 @@ class WorkspaceManager:
             # TODO: Add build script validation
             build_script = self.build_script_path
 
+            symlink_install_arg = "--symlink-install" if self.symlink_install else ""
+
             # Proceed with build
             self.logger.info(f"Building workspace at '{workspace}' using build script {build_script}...")
             executor = ScriptExecutor(build_script, self.logger, self.user_prompter,
                                       context={"ARCSCFG_UNDERLAY": str(underlay),
-                                               "ARCSCFG_WORKSPACE": str(workspace)})
+                                               "ARCSCFG_WORKSPACE": str(workspace),
+                                               "ARCSCFG_SYMLINK_INSTALL_ARG": str(symlink_install_arg)})
             try:
                 executor.execute()
             except Exception as e:
