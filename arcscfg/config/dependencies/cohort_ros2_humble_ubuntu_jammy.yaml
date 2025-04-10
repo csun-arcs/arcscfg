@@ -45,6 +45,7 @@ apt:
   - ros-${ARCSCFG_ROS_DISTRO}-ros2-control
   - ros-${ARCSCFG_ROS_DISTRO}-ros2-controllers
   - ros-${ARCSCFG_ROS_DISTRO}-zed-msgs
+  - ros-${ARCSCFG_ROS_DISTRO}-pointcloud-to-laserscan
 
   # ------------------------------
   # DDS Implementations
