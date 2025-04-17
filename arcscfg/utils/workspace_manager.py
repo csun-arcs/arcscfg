@@ -132,12 +132,15 @@ class WorkspaceManager:
             # Clone main workspace repositories
             self.clone_repositories(workspace, self.workspace_config)
 
-            # Discover additional dependency files
+            # Multi-pass discovery additional dependency files
+            previous_dependency_files = []
             dependency_files = self._discover_dependency_files()
-
-            # Clone repositories from each dependency file
-            for dep_file in dependency_files:
-                self.clone_repositories(workspace, dep_file)
+            while dependency_files != previous_dependency_files:
+                # Clone repositories from each dependency file
+                for dep_file in dependency_files:
+                    self.clone_repositories(workspace, dep_file)
+                previous_dependency_files = dependency_files
+                dependency_files = self._discover_dependency_files()
 
             self.logger.info(f"Workspace setup at '{workspace}' using config '{self.workspace_config}' completed successfully.")
 
@@ -162,12 +165,15 @@ class WorkspaceManager:
             # Pull repositories
             self.pull_repositories(workspace)
 
-            # Discover additional dependency files
+            # Multi-pass discovery additional dependency files
+            previous_dependency_files = []
             dependency_files = self._discover_dependency_files()
-
-            # Clone repositories from each dependency file
-            for dep_file in dependency_files:
-                self.clone_repositories(workspace, dep_file)
+            while dependency_files != previous_dependency_files:
+                # Clone repositories from each dependency file
+                for dep_file in dependency_files:
+                    self.clone_repositories(workspace, dep_file)
+                previous_dependency_files = dependency_files
+                dependency_files = self._discover_dependency_files()
 
             self.logger.info(f"Workspace setup at '{workspace}' using config '{self.workspace_config}' completed successfully.")
 
