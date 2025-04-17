@@ -25,13 +25,13 @@ steps:
       fi
 
       # Source ROS 2 underlay
-      source ${ARCSCFG_UNDERLAY}/setup.bash
+      source "${ARCSCFG_UNDERLAY}/setup.bash"
 
       # Ignore CUDA-dependent packages
-      touch ${ARCSCFG_WORKSPACE}/src/zed-ros2-wrapper/zed_components/COLCON_IGNORE
+      touch "${ARCSCFG_WORKSPACE}/src/zed-ros2-wrapper/zed_components/COLCON_IGNORE"
 
       # Build ROS 2 workspace
-      cd ${ARCSCFG_WORKSPACE}
+      cd "${ARCSCFG_WORKSPACE}"
       colcon build ${ARCSCFG_SYMLINK_INSTALL_ARG}
 
   - message: "Workspace build script finished."
