@@ -1,9 +1,12 @@
 # CoHORT Workspace Configuration
 repositories:
-  arcs_cohort_msgs:
-    type: git
-    url: git@github.com:csun-arcs/arcs_cohort_msgs.git
-    version: main
+  #
+  # TODO: The following package has not yet been implemented.
+  #
+  # arcs_cohort_msgs:
+  #   type: git
+  #   url: git@github.com:csun-arcs/arcs_cohort_msgs.git
+  #   version: main
   arcs_cohort_description:
     type: git
     url: git@github.com:csun-arcs/arcs_cohort_description.git
@@ -16,18 +19,21 @@ repositories:
     type: git
     url: git@github.com:csun-arcs/arcs_cohort_simulation.git
     version: main
-  arcs_cohort_core:
-    type: git
-    url: git@github.com:csun-arcs/arcs_cohort_core.git
-    version: main
-  arcs_cohort_control:
-    type: git
-    url: git@github.com:csun-arcs/arcs_cohort_control.git
-    version: main
-  arcs_cohort_sensing:
-    type: git
-    url: git@github.com:csun-arcs/arcs_cohort_sensing.git
-    version: main
+  #
+  # TODO: The following packages have not yet been implemented.
+  #
+  # arcs_cohort_core:
+  #   type: git
+  #   url: git@github.com:csun-arcs/arcs_cohort_core.git
+  #   version: main
+  # arcs_cohort_control:
+  #   type: git
+  #   url: git@github.com:csun-arcs/arcs_cohort_control.git
+  #   version: main
+  # arcs_cohort_sensing:
+  #   type: git
+  #   url: git@github.com:csun-arcs/arcs_cohort_sensing.git
+  #   version: main
   arcs_cohort_perception:
     type: git
     url: git@github.com:csun-arcs/arcs_cohort_perception.git
