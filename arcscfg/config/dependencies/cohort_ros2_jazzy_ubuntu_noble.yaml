@@ -49,6 +49,7 @@ apt:
   - ros-${ARCSCFG_ROS_DISTRO}-pointcloud-to-laserscan
   - ros-${ARCSCFG_ROS_DISTRO}-twist-stamper
   - ros-${ARCSCFG_ROS_DISTRO}-twist-mux
+  - ros-${ARCSCFG_ROS_DISTRO}-spatio-temporal-voxel-layer
 
   # ------------------------------
   # DDS Implementations
