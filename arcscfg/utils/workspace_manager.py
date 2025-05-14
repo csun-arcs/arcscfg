@@ -2,8 +2,9 @@ import os
 import re
 import subprocess
 import sys
+from string import Template
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Dict, Optional
 
 import yaml
 
@@ -26,11 +27,11 @@ class WorkspaceManager:
         dependency_file_names: Optional[List[str]] = None,
         recursive_search: bool = False,
         max_retries: int = 2,
+        context: Optional[Dict[str, str]] = None,
         user_prompter: Optional[UserPrompter] = None,
     ):
         self.logger = logger or Logger()
         self.assume = assume
-        self.user_prompter = user_prompter or UserPrompter(assume=assume)
 
         self.workspace_path = (
             Path(workspace_path).expanduser().resolve() if workspace_path else None
@@ -50,6 +51,8 @@ class WorkspaceManager:
         )
         self.recursive_search = recursive_search
         self.max_retries = max_retries
+        self.context = context or {}
+        self.user_prompter = user_prompter or UserPrompter(assume=assume)
 
     def _discover_dependency_files(self) -> List[Path]:
         """Discover all dependency files within each cloned repository in the workspace."""
@@ -119,8 +122,25 @@ class WorkspaceManager:
                         f"YAML parsing error in {self.workspace_config}: {e}"
                     )
                     raise
-
             self._validate_workspace_config(config)
+
+            # Load config as template
+            with self.workspace_config.open("r") as f:
+                raw_content = f.read()
+            template = Template(raw_content)
+
+            # Perform template substitutions
+            try:
+                substituted_content = template.safe_substitute(self.context)
+            except KeyError as e:
+                self.logger.error(f"Missing substitution variable: {e}")
+                raise
+            substituted_config = yaml.safe_load(substituted_content)
+
+            # Write substituted config to temp file
+            temp_config = Path("/tmp") / os.path.basename(self.workspace_config)
+            with open(temp_config, "w") as f:
+                yaml.safe_dump(substituted_config, f, sort_keys=False)
 
             # Validate/create src directory
             self._validate_src_directory(workspace, allow_create=True)
@@ -130,7 +150,7 @@ class WorkspaceManager:
             )
 
             # Clone main workspace repositories
-            self.clone_repositories(workspace, self.workspace_config)
+            self.clone_repositories(workspace, temp_config)
 
             # Multi-pass discovery additional dependency files
             previous_dependency_files = []

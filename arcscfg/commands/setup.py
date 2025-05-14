@@ -13,16 +13,34 @@ class SetupCommand(BaseCommand):
     def execute(self):
         self.logger.debug("Executing SetupCommand")
 
+        package_dependency_files = self.args.package_dependency_files
+
+        if self.args.transport.lower() == "ssh":
+            if not package_dependency_files:
+                package_dependency_files = ["dependencies.repos.ssh", "dependencies.rosinstall.ssh"]
+            clone_url_prefix = "git@" + self.args.host + ":"
+        elif self.args.transport.lower() == "https":
+            if not package_dependency_files:
+                package_dependency_files = ["dependencies.repos.https", "dependencies.rosinstall.https"]
+            clone_url_prefix = "https://" + self.args.host + "/"
+        else:
+            if not package_dependency_files:
+                package_dependency_files = ["dependencies.repos", "dependencies.rosinstall"]
+            clone_url_prefix = "git@" + self.args.host + ":"
+
         # Initialize WorkspaceManager
         manager = WorkspaceManager(
             workspace_path=self.args.workspace,
             workspace_config=self.args.workspace_config,
             assume=self.args.assume,
             logger=self.logger,
-            dependency_file_names=self.args.package_dependency_files,
+            dependency_file_names=package_dependency_files,
             recursive_search=self.args.recursive_search,
             max_retries=self.args.max_retries,
             user_prompter=self.user_prompter,
+            context={
+                "ARCSCFG_CLONE_URL_PREFIX": clone_url_prefix,
+            },
         )
 
         # Get or prompt for workspace configuration

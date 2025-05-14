@@ -212,9 +212,11 @@ def main():
         "-pdf",
         "--package-dependency-files",
         nargs="*",
-        default=["dependencies.repos", "dependencies.rosinstall"],
         help=(
-            "Dependency file names to search for within packages."
+            "Dependency file names to search for within packages. "
+            "Defaults to ['dependencies.repos.ssh', 'dependencies.rosinstall.ssh'] if '--transport' set to 'ssh', "
+            "or ['dependencies.repos.https', 'dependencies.rosinstall.https'] if '--transport' set to 'https', "
+            "or ['dependencies.repos', 'dependencies.rosinstall'] otherwise."
         ),
     )
     setup_parser.add_argument(
@@ -229,6 +231,21 @@ def main():
         type=int,
         default=2,
         help="Set the maximum number of times vcs should retry commands on failure.",
+    )
+    setup_parser.add_argument(
+        "-t",
+        "--transport",
+        type=str,
+        default="",
+        choices=["", "ssh", "https"],
+        help="Git transport/protocol to use.",
+    )
+    setup_parser.add_argument(
+        "-ho",
+        "--host",
+        type=str,
+        default="github.com",
+        help="Git host site.",
     )
     setup_parser.set_defaults(func=SetupCommand)
 
