@@ -237,7 +237,7 @@ def main():
         "--transport",
         type=str,
         default="",
-        choices=["", "ssh", "https"],
+        choices=["ssh", "https"],
         help="Git transport/protocol to use.",
     )
     setup_parser.add_argument(
