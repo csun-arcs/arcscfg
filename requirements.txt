@@ -4,3 +4,4 @@ appdirs
 colcon-common-extensions
 numpy
 lark
+catkin_pkg
