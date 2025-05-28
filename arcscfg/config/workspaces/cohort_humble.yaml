@@ -14,7 +14,7 @@ repositories:
   arcs_cohort_bringup:
     type: git
     url: ${ARCSCFG_CLONE_URL_PREFIX}csun-arcs/arcs_cohort_bringup.git
-    version: main/main
+    version: humble/main
   arcs_cohort_simulation:
     type: git
     url: ${ARCSCFG_CLONE_URL_PREFIX}csun-arcs/arcs_cohort_simulation.git
