@@ -14,6 +14,7 @@ setup(
         "colcon-common-extensions", # For ROS 2 colcon builds
         "numpy", # For ROS 2 colcon builds of certain packages
         "lark", # For ROS 2 colcon builds of certain packages
+        "catkin_pkg", # For ROS 2 colcon builds
     ],
     extras_require={
         "dev": ["pytest"] # For testing
