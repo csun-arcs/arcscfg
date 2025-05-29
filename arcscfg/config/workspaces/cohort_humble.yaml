@@ -10,15 +10,15 @@ repositories:
   arcs_cohort_description:
     type: git
     url: ${ARCSCFG_CLONE_URL_PREFIX}csun-arcs/arcs_cohort_description.git
-    version: humble
+    version: humble/main
   arcs_cohort_bringup:
     type: git
     url: ${ARCSCFG_CLONE_URL_PREFIX}csun-arcs/arcs_cohort_bringup.git
-    version: main
+    version: humble/main
   arcs_cohort_simulation:
     type: git
     url: ${ARCSCFG_CLONE_URL_PREFIX}csun-arcs/arcs_cohort_simulation.git
-    version: humble
+    version: humble/main
   #
   # TODO: The following packages have not yet been implemented.
   #
@@ -33,12 +33,12 @@ repositories:
   arcs_cohort_control:
     type: git
     url: ${ARCSCFG_CLONE_URL_PREFIX}csun-arcs/arcs_cohort_control.git
-    version: humble
+    version: humble/main
   arcs_cohort_perception:
     type: git
     url: ${ARCSCFG_CLONE_URL_PREFIX}csun-arcs/arcs_cohort_perception.git
-    version: main
+    version: humble/main
   arcs_cohort_navigation:
     type: git
     url: ${ARCSCFG_CLONE_URL_PREFIX}csun-arcs/arcs_cohort_navigation.git
-    version: humble
+    version: humble/main
