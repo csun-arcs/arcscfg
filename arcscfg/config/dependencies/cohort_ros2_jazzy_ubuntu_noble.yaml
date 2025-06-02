@@ -50,6 +50,8 @@ apt:
   - ros-${ARCSCFG_ROS_DISTRO}-twist-stamper
   - ros-${ARCSCFG_ROS_DISTRO}-twist-mux
   - ros-${ARCSCFG_ROS_DISTRO}-spatio-temporal-voxel-layer
+  - ros-${ARCSCFG_ROS_DISTRO}-gz-ros2-control
+  - ros-${ARCSCFG_ROS_DISTRO}-image-proc
 
   # ------------------------------
   # DDS Implementations
