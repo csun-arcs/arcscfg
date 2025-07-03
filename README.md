@@ -31,6 +31,44 @@ Before installing =arcscfg=, ensure your system meets the following requirements
 
 ## Installation
 
+### Quickstart
+
+Install [pyenv](https://github.com/pyenv/pyenv):
+
+```bash
+curl -fsSL https://pyenv.run | bash
+```
+
+Configure `pyenv` for a `bash` shell environment:
+
+```bash
+echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(pyenv init - bash)"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+Install `pyenv` Python version that matches system version:
+
+```bash
+pyenv install `python3 --version | sed 's/Python //'`
+```
+
+Set up and activate `pyenv` virtual environment for `arcscfg`:
+
+```bash
+pyenv virtualenv `python3 --version | sed 's/Python //'` arcscfg
+pyenv activate arcscfg
+```
+
+Clone and install `arcscfg` in `pyenv` virtual environment:
+
+```bash
+git clone https://github.com/csun-arcs/arcscfg.git
+cd arcscfg
+pip install -e .
+```
+
 ### Virtual Environments
 
 It's recommended to use a virtual environment to avoid conflicts with other Python packages.
