@@ -15,6 +15,7 @@
 - **Extensibility**: Modular command structure allows for easy addition of new functionalities.
 
 ## Prerequisites
+<details>
 
 Before installing =arcscfg=, ensure your system meets the following requirements:
 
@@ -28,6 +29,7 @@ Before installing =arcscfg=, ensure your system meets the following requirements
 - **Python**: Python 3.8 or higher.
 - **ROS 2**: Recommended to have ROS 2 installed. *arcscfg* can assist in installing ROS 2 distributions. [ROS 2 Jazzy Jalisco](https://docs.ros.org/en/jazzy/index.html) is recommended.
 - **System Dependencies**: `git`, `curl`, and other build-essential packages.
+</details>
 
 ## Installation
 
@@ -71,6 +73,8 @@ pip install -e .
 
 ### Virtual Environments
 
+<details>
+
 It's recommended to use a virtual environment to avoid conflicts with other Python packages.
 
 [venv](https://docs.python.org/3/library/venv.html), [virtualenv](https://virtualenv.pypa.io/en/latest/user_guide.html), [virtualenvwrapper](https://pypi.org/project/virtualenvwrapper/), [pipenv](https://pipenv.pypa.io/en/latest/) and [pyenv](https://python.land/virtual-environments/pyenv) / [pyenv-virtualenv](https://github.com/pyenv/pyenv-virtualenv) are all good options for this.
@@ -103,7 +107,11 @@ Here is an example using `venv`:
    pip install .
    ```
 
+</details>
+
 ### Using pip
+
+<details>
 
 Another possible way to install =arcscfg= is via *pip*, although its usage tends to restricted by default on more recent Ubuntu distributions. Ensure you have Python and `pip` installed on your system.
 
@@ -122,7 +130,11 @@ Another possible way to install =arcscfg= is via *pip*, although its usage tends
 
    *Note*: You might need to use `pip3` instead of `pip` depending on your system configuration.
 
+</details>
+
 ### From Source
+
+<details>
 
 To install `arcscfg` from source:
 
@@ -143,6 +155,8 @@ To install `arcscfg` from source:
    ```bash
    python setup.py install
    ```
+
+</details>
 
 ## Usage
 
