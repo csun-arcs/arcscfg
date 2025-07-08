@@ -160,4 +160,4 @@ To install `arcscfg` from source:
 
 ## Usage
 
-TODO
+Usage instructions can be found in the [arcscfg wiki](https://github.com/csun-arcs/arcscfg/wiki).
