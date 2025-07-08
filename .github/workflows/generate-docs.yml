@@ -39,7 +39,6 @@ jobs:
       - name: Generate CLI command docs
         shell: bash
         run: |
-          source ros_ws/install/setup.bash
           set -euo pipefail
           python3 "./arcs_cohort_docs_tools/scripts/generate_cli_command_docs.py" \
             --command arcscfg \
