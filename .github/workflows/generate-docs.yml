@@ -1,0 +1,113 @@
+name: Generate and Upload Wiki Documentation
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: generate-docs
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-docs:
+    if: |
+      github.event.head_commit.message != 'Update auto-generated README.md' &&
+      !contains(join(github.event.commits.*.modified, ','), 'README.md')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh -y
+
+      - uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+
+      - name: Clone arcs_cohort_docs_tools
+        run: |
+          git clone https://github.com/csun-arcs/arcs_cohort_docs_tools.git arcs_cohort_docs_tools
+
+      - name: Clone and install arcscfg
+        run: |
+          git clone https://github.com/csun-arcs/arcscfg.git arcscfg
+          pip install -e ./arcscfg
+
+      - name: Generate CLI command docs
+        shell: bash
+        run: |
+          source ros_ws/install/setup.bash
+          set -euo pipefail
+          python3 "./arcs_cohort_docs_tools/scripts/generate_cli_command_docs.py" \
+            --command arcscfg \
+            --output arcscfg_docs
+
+      - name: List generated launch docs for this package
+        run: |
+          find ./arcscfg_docs -name '*.md' || echo "No CLI command docs found"
+
+      - name: Clone GitHub Wiki
+        run: |
+          git clone "https://github.com/${{ github.repository }}.wiki.git" wiki
+
+      - name: Move generated docs to wiki directory
+        run: |
+          set -euo pipefail
+          mkdir -p wiki/arcscfg_docs
+          cp ./arcscfg_docs/${{ github.event.repository.name }}/*.md wiki/arcscfg_docs/
+
+      - name: Generate Home.md from template
+        run: |
+          set -euo pipefail
+          pip install jinja2
+          python3 "./arcs_cohort_docs_tools/scripts/generate_template_md.py" \
+            --template-dir "wiki" \
+            --template-name "Home.template.md" \
+            --output "wiki/Home.md" \
+            --cli-command-docs-dir "arcscfg_docs" \
+            --package-name "${{ github.event.repository.name }}" \
+            --docs-workflow-filename "generate-docs.yml" \
+            --tests-workflow-filename "run-tests.yml"
+
+      - name: Publish to GitHub Wiki
+        uses: Andrew-Chen-Wang/github-wiki-action@v4
+        with:
+          path: wiki/
+
+      # - name: Generate README.md from template
+      #   run: |
+      #     set -euo pipefail
+      #     pip install jinja2
+      #     python3 "./arcs_cohort_docs_tools/scripts/generate_template_md.py" \
+      #       --template-dir "./ros_ws/src/${{ github.event.repository.name }}/templates/" \
+      #       --template-name "README.template.md" \
+      #       --output "./ros_ws/src/${{ github.event.repository.name }}/README.md" \
+      #       --launch-docs-dir "ros_ws/launch_docs" \
+      #       --workspace "./ros_ws" \
+      #       --package-name "${{ github.event.repository.name }}" \
+      #       --docs-workflow-filename "generate-docs.yml" \
+      #       --tests-workflow-filename "run-tests.yml"
+
+      # - name: Clone repo with token and force-push README to autogen branch
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     set -euo pipefail
+      #     git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" repo_clone
+      #     cp -f ./ros_ws/src/${{ github.event.repository.name }}/README.md repo_clone/README.md
+
+      #     cd repo_clone
+      #     git checkout -B autogen/readme
+      #     git config user.name "github-actions[bot]"
+      #     git config user.email "github-actions[bot]@users.noreply.github.com"
+      #     git add README.md
+      #     git diff --cached --quiet && echo "No changes to commit." && exit 0
+
+      #     git commit -m "Update auto-generated README.md"
+      #     git push -f origin autogen/readme
+
+      #     echo "✅ Auto-generated README pushed to autogen/readme"
+      #     echo "🔁 Compare changes at: https://github.com/${{ github.repository }}/compare/main...autogen/readme"
