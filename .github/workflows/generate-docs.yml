@@ -52,11 +52,11 @@ jobs:
         run: |
           git clone "https://github.com/${{ github.repository }}.wiki.git" wiki
 
-      - name: Move generated docs to wiki directory
+      - name: Copy generated docs to wiki directory
         run: |
           set -euo pipefail
           mkdir -p wiki/arcscfg_docs
-          cp ./arcscfg_docs/${{ github.event.repository.name }}/*.md wiki/arcscfg_docs/
+          cp ./arcscfg_docs/*.md wiki/arcscfg_docs/
 
       - name: Generate Home.md from template
         run: |
